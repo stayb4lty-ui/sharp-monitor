@@ -629,6 +629,10 @@
     <button class="filter-chip" onclick="setFilter('moved', this)">📈 MOVED</button>
     <button class="filter-chip" onclick="setFilter('spread', this)">SPREAD</button>
     <button class="filter-chip" onclick="setFilter('total', this)">TOTAL</button>
+    <button class="filter-chip" onclick="setFilter('NBA', this)">NBA</button>
+    <button class="filter-chip" onclick="setFilter('NHL', this)">NHL</button>
+    <button class="filter-chip" onclick="setFilter('MLB', this)">MLB</button>
+    <button class="filter-chip" onclick="setFilter('NCAAM', this)">NCAAM</button>
   </div>
 
   <div class="games-list" id="gamesList">
@@ -665,157 +669,160 @@
   let expandedCards = new Set();
 
   // ─── PARSER ──────────────────────────────────────────────
+  const SPORTS = ['NBA','NHL','MLB','NFL','NCAAM'];
+
+  function stripSport(line) {
+    for (const s of SPORTS) {
+      if (line.startsWith(s + ',')) return { sport: s, line: line.slice(s.length + 1) };
+    }
+    return { sport: null, line };
+  }
+
   function parseVSiN(raw) {
     const lines = raw.trim().split('\n').map(l => l.trim()).filter(l => l);
     if (!lines.length) return [];
 
-    // Remove header if present
+    // Remove header
     let start = 0;
-    if (lines[0].startsWith('Matchup')) start = 1;
+    if (lines[0].startsWith('Matchup') || lines[0].startsWith('Sport')) start = 1;
+
+    // The actual format per game (8 lines after header):
+    // Line 0: Away Team Name
+    // Line 1: "Home Team Name,-awaySpread\n+homeSpread"  → " Home Team,-1.5\n+1.5"
+    // Line 2: "awayHandle\nhomeHandle"  → "28\n72"
+    // Line 3: "awayBets\nhomeBets"  → "36\n64"
+    // Line 4: "projTotal\nprojTotal"  → "226.5\n226.5"
+    // Line 5: "overHandle\nunderHandle" → "3\n97"
+    // Line 6: "overBets\nunderBets"  → "25\n75"
+    //
+    // Each "cell" in VSiN table is two rows (away/home or over/under)
+    // The bookmarklet joins them as "val1\nval2" separated by commas
 
     const games = [];
     let i = start;
+    let currentSport = 'NBA';
 
     while (i < lines.length) {
-      try {
-        // Away team name (no commas, no numbers at start)
-        const awayLine = lines[i];
-        if (!awayLine || awayLine.startsWith('Matchup')) { i++; continue; }
+      let rawLine = lines[i];
+      if (!rawLine || rawLine.startsWith('Matchup') || rawLine.startsWith('Sport')) { i++; continue; }
 
-        // Home team line contains the spread values
-        const homeLine = lines[i + 1] || '';
+      // Extract sport prefix if present
+      const { sport, line: awayLine } = stripSport(rawLine);
+      if (sport) currentSport = sport;
+      const awayTeam = awayLine;
 
-        // Parse the home line: "Team Name,-spread\n+spread,handle_away\nhandle_home,..."
-        // Data comes as pairs separated by newlines within each "row"
-        // Format: hometeam,-awayspread\n+homespread,awayhandle\nhomehandle,awaybet\nhomebet,total\ntotal,totalhandle_over\ntotalhandle_under,totalbets_over\ntotalbets_under
-
-        // Each game block spans multiple lines in the pasted data
-        // Let's collect all lines for this game until we hit the next team name
-        const gameLines = [awayLine, homeLine];
-        
-        // Collect remaining data lines (they contain commas and numbers)
-        let j = i + 2;
-        while (j < lines.length) {
-          const l = lines[j];
-          // If this looks like a new team name (no comma, not just numbers)
-          if (!l.includes(',') && !/^[\d\.\-\+\s]+$/.test(l) && l.length > 3) break;
-          gameLines.push(l);
-          j++;
-        }
-
-        // Parse from gameLines
-        const game = parseGameBlock(gameLines);
-        if (game) games.push(game);
-
-        i = j;
-      } catch(e) {
-        i++;
+      // Collect block lines, stripping sport prefix from each
+      const block = [awayTeam];
+      let j = i + 1;
+      while (j < lines.length) {
+        const { sport: ls, line: stripped } = stripSport(lines[j]);
+        const l = stripped;
+        const isTeamName = !l.includes(',') && !/^[\-\+]?[\d\.]+$/.test(l) && l.length > 2 && !/^\d+$/.test(l.split('\n')[0]);
+        if (isTeamName && block.length >= 6) break;
+        block.push(l);
+        j++;
       }
+
+      const game = parseGameBlock(block);
+      if (game) { game.sport = currentSport; games.push(game); }
+      i = j;
     }
 
     return games;
   }
 
-  function parseGameBlock(lines) {
-    if (lines.length < 2) return null;
+  function parseGameBlock(block) {
+    if (block.length < 5) return null;
 
-    const awayTeam = lines[0].trim();
-    
-    // Second line: "Home Team,-awaySpread" or "Home Team,+awaySpread"
-    const homeLineParts = lines[1].split(',');
-    const homeTeam = homeLineParts[0].replace(/^\s*/, '').trim();
-    
-    // Extract all numeric pairs from remaining lines
-    const pairs = [];
-    for (let k = 1; k < lines.length; k++) {
-      const parts = lines[k].split(',');
-      if (parts.length >= 2) {
-        const a = parseFloat(parts[parts.length - 2]);
-        const b = parseFloat(parts[parts.length - 1]);
-        if (!isNaN(a) || !isNaN(b)) pairs.push([isNaN(a) ? null : a, isNaN(b) ? null : b]);
-      } else if (parts.length === 1) {
-        const v = parseFloat(parts[0]);
-        if (!isNaN(v)) pairs.push([v, null]);
+    try {
+      const awayTeam = block[0].trim();
+
+      // Block[1]: "Home Team,-1.5"
+      const b1 = (block[1] || '').split(',');
+      const homeTeam = b1[0].trim();
+      const awaySpread = parseFloat(b1[1]) || 0;
+
+      // Block[2]: "+1.5,awayHandle"
+      const b2 = (block[2] || '').split(',');
+      const homeSpread = parseFloat(b2[0]) || 0;
+      const awayHandle = parseFloat(b2[1]) || 0;
+
+      // Block[3]: "homeHandle,awayBets"
+      const b3 = (block[3] || '').split(',');
+      const homeHandle = parseFloat(b3[0]) || 0;
+      const awayBets = parseFloat(b3[1]) || 0;
+
+      // Block[4]: "homeBets,total"
+      const b4 = (block[4] || '').split(',');
+      const homeBets = parseFloat(b4[0]) || 0;
+      const total = parseFloat(b4[1]) || 0;
+
+      // Block[5]: "total(dup),overHandle"
+      const b5 = (block[5] || '').split(',');
+      const overHandle = parseFloat(b5[1]) || 50;
+
+      // Block[6]: "underHandle,overBets"
+      const b6 = (block[6] || '').split(',');
+      const underHandle = parseFloat(b6[0]) || 50;
+      const overBets = parseFloat(b6[1]) || 50;
+
+      // Block[7]: "underBets"
+      const underBets = parseFloat(block[7]) || 50;
+
+      if (!homeTeam || !awayTeam) return null;
+
+      // Signal detection
+      const spreadDelta = awayHandle - awayBets;
+      const homeDelta = homeHandle - homeBets;
+      const totalDelta = overHandle - overBets;
+
+      let spreadSignal = 'neutral';
+      let spreadSide = null;
+
+      // Whale: handle significantly exceeds bets (sharp money)
+      if (awayHandle >= 55 && awayBets <= 45 && spreadDelta >= 15) {
+        spreadSignal = 'whale'; spreadSide = awayTeam;
+      } else if (homeHandle >= 55 && homeBets <= 45 && homeDelta >= 15) {
+        spreadSignal = 'whale'; spreadSide = homeTeam;
       }
-    }
-
-    // Try to extract key values from the raw text
-    // Flatten all numeric values in order
-    const allNums = [];
-    for (const line of lines.slice(1)) {
-      for (const part of line.split(',')) {
-        const v = parseFloat(part.trim());
-        if (!isNaN(v)) allNums.push(v);
+      // Public trap: heavy tickets, lower handle (fade)
+      else if (awayBets >= 65 && awayHandle < awayBets - 15) {
+        spreadSignal = 'trap'; spreadSide = homeTeam;
+      } else if (homeBets >= 65 && homeHandle < homeBets - 15) {
+        spreadSignal = 'trap'; spreadSide = awayTeam;
       }
+
+      let totalSignal = 'neutral';
+      let totalSide = null;
+      if (overHandle >= 60 && overBets < 50 && totalDelta >= 15) {
+        totalSignal = 'whale'; totalSide = 'OVER';
+      } else if (underHandle >= 60 && underBets < 50 && (underHandle - underBets) >= 15) {
+        totalSignal = 'whale'; totalSide = 'UNDER';
+      } else if (overBets >= 65 && overHandle < overBets - 15) {
+        totalSignal = 'trap'; totalSide = 'UNDER';
+      } else if (underBets >= 65 && underHandle < underBets - 15) {
+        totalSignal = 'trap'; totalSide = 'OVER';
+      }
+
+      return {
+        id: `${awayTeam}_${homeTeam}`.replace(/\s+/g, '_'),
+        awayTeam, homeTeam,
+        sport: 'NBA', // overwritten by caller
+        awaySpread, homeSpread,
+        awayHandle, homeHandle,
+        awayBets, homeBets,
+        total,
+        overHandle, underHandle,
+        overBets, underBets,
+        spreadDelta,
+        totalDelta,
+        spreadSignal, spreadSide,
+        totalSignal, totalSide,
+        overallSignal: spreadSignal !== 'neutral' ? spreadSignal : totalSignal
+      };
+    } catch(e) {
+      return null;
     }
-
-    if (allNums.length < 8) return null;
-
-    // Based on the data format observed:
-    // allNums: [awaySpread, homeSpread, awayHandle, homeHandle, awayBets, homeBets, total1, total2, totalHandleOver, totalHandleUnder, totalBetsOver, totalBetsUnder]
-    const awaySpread = allNums[0];
-    const homeSpread = allNums[1];
-    const awayHandle = allNums[2];
-    const homeHandle = allNums[3];
-    const awayBets = allNums[4];
-    const homeBets = allNums[5];
-    const total = allNums[6];
-    const overHandle = allNums.length > 8 ? allNums[8] : 50;
-    const underHandle = allNums.length > 9 ? allNums[9] : 50;
-    const overBets = allNums.length > 10 ? allNums[10] : 50;
-    const underBets = allNums.length > 11 ? allNums[11] : 50;
-
-    // Determine sharp side for spread
-    const spreadDelta = awayHandle - awayBets;
-    const totalDelta = overHandle - overBets;
-
-    let spreadSignal = 'neutral';
-    let spreadSide = null;
-
-    // Whale: high handle, low bets (sharp money)
-    if (awayHandle >= 55 && awayBets < 45 && Math.abs(spreadDelta) >= 15) {
-      spreadSignal = 'whale';
-      spreadSide = awayTeam;
-    } else if (homeHandle >= 55 && homeBets < 45 && Math.abs(homeHandle - homeBets) >= 15) {
-      spreadSignal = 'whale';
-      spreadSide = homeTeam;
-    }
-    // Public trap: heavy bets, lower handle
-    else if (awayBets >= 65 && awayHandle < awayBets - 15) {
-      spreadSignal = 'trap';
-      spreadSide = homeTeam; // fade the public
-    } else if (homeBets >= 65 && homeHandle < homeBets - 15) {
-      spreadSignal = 'trap';
-      spreadSide = awayTeam;
-    }
-
-    let totalSignal = 'neutral';
-    let totalSide = null;
-    if (overHandle >= 60 && overBets < 50 && (overHandle - overBets) >= 15) {
-      totalSignal = 'whale'; totalSide = 'OVER';
-    } else if (underHandle >= 60 && underBets < 50 && (underHandle - underBets) >= 15) {
-      totalSignal = 'whale'; totalSide = 'UNDER';
-    } else if (overBets >= 65 && overHandle < overBets - 15) {
-      totalSignal = 'trap'; totalSide = 'UNDER';
-    } else if (underBets >= 65 && underHandle < underBets - 15) {
-      totalSignal = 'trap'; totalSide = 'OVER';
-    }
-
-    return {
-      id: `${awayTeam}_${homeTeam}`.replace(/\s+/g, '_'),
-      awayTeam, homeTeam,
-      awaySpread, homeSpread,
-      awayHandle, homeHandle,
-      awayBets, homeBets,
-      total,
-      overHandle, underHandle,
-      overBets, underBets,
-      spreadDelta,
-      totalDelta,
-      spreadSignal, spreadSide,
-      totalSignal, totalSide,
-      overallSignal: spreadSignal !== 'neutral' ? spreadSignal : totalSignal
-    };
   }
 
   // ─── MOVEMENT DETECTION ──────────────────────────────────
@@ -893,6 +900,7 @@
     else if (activeFilter === 'moved') filtered = games.filter(g => movements[g.id]);
     else if (activeFilter === 'spread') filtered = games.filter(g => g.spreadSignal !== 'neutral');
     else if (activeFilter === 'total') filtered = games.filter(g => g.totalSignal !== 'neutral');
+    else if (SPORTS.includes(activeFilter)) filtered = games.filter(g => g.sport === activeFilter);
 
     // Sort: signals first, then by spread delta
     filtered.sort((a, b) => {
@@ -957,6 +965,7 @@
       <div class="card-header" onclick="toggleCard('${g.id}')">
         <div>
           <div class="matchup">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:6px">${g.sport}</span>
             <span class="away">${g.awayTeam.split(' ').pop()}</span>
             <span class="vs">@</span>
             <span class="home">${g.homeTeam.split(' ').pop()}</span>
