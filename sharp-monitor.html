@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sharp Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --surface: #111;
+    --surface2: #181818;
+    --border: #222;
+    --border2: #2a2a2a;
+    --green: #00ff87;
+    --red: #ff3d5a;
+    --yellow: #ffc107;
+    --blue: #00b4d8;
+    --purple: #b388ff;
+    --text: #f0f0f0;
+    --muted: #555;
+    --dim: #2a2a2a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Epilogue', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 16px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.1em;
+    color: var(--text);
+  }
+
+  .logo span { color: var(--green); }
+
+  .snapshot-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .snapshot-count b { color: var(--green); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0;
+  }
+
+  .tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tab.active { background: var(--green); color: #000; border-color: var(--green); font-weight: 700; }
+  .tab:not(.active):hover { border-color: #444; color: var(--text); }
+
+  /* PASTE AREA */
+  .paste-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .paste-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .paste-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 12px;
+    resize: none;
+    height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+
+  textarea:focus { border-color: var(--green); }
+  textarea::placeholder { color: var(--muted); }
+
+  .paste-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex: 1;
+  }
+
+  .btn-primary { background: var(--green); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #00e676; }
+  .btn-primary:active { transform: scale(0.97); }
+
+  .btn-secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); flex: 0; padding: 10px 14px; }
+  .btn-secondary:hover { color: var(--text); border-color: #444; }
+
+  /* SIGNAL BOARD */
+  .board-header {
+    padding: 12px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .board-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  .last-update {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* FILTER BAR */
+  .filter-bar {
+    padding: 0 16px 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  .filter-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .filter-chip.active { background: var(--surface2); color: var(--text); border-color: #444; }
+  .filter-chip:hover { border-color: #444; color: var(--text); }
+
+  /* GAME CARDS */
+  .games-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+
+  .game-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .game-card.has-signal { border-color: #2a2a2a; }
+  .game-card.signal-whale { border-left: 3px solid var(--green); }
+  .game-card.signal-trap { border-left: 3px solid var(--red); }
+  .game-card.signal-contested { border-left: 3px solid var(--yellow); }
+
+  .card-header {
+    padding: 10px 14px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .matchup {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .matchup .away { color: var(--text); }
+  .matchup .vs { color: var(--muted); font-size: 10px; margin: 0 4px; }
+  .matchup .home { color: var(--text); }
+
+  .signal-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 3px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  .badge-whale { background: rgba(0,255,135,0.12); color: var(--green); border: 1px solid rgba(0,255,135,0.25); }
+  .badge-trap { background: rgba(255,61,90,0.12); color: var(--red); border: 1px solid rgba(255,61,90,0.25); }
+  .badge-neutral { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); }
+  .badge-contested { background: rgba(255,193,7,0.1); color: var(--yellow); border: 1px solid rgba(255,193,7,0.2); }
+
+  /* SPLITS GRID */
+  .splits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .split-cell {
+    background: var(--surface);
+    padding: 10px 12px;
+  }
+
+  .split-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .split-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+  }
+
+  .split-team {
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .split-vals {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .split-handle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .split-bets {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .hot { color: var(--green); }
+  .cold { color: var(--muted); }
+  .warm { color: var(--yellow); }
+
+  /* DELTA INDICATOR */
+  .delta-row {
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .delta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .delta-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .delta-pos { color: var(--green); }
+  .delta-neg { color: var(--red); }
+  .delta-neutral { color: var(--muted); }
+
+  /* MOVEMENT TRACKER */
+  .movement-section {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+
+  .movement-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .movement-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .movement-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+
+  .mov-time { color: var(--muted); min-width: 45px; }
+  .mov-field { color: var(--muted); min-width: 50px; }
+  .mov-arrow { font-size: 12px; }
+  .mov-from { color: var(--muted); text-decoration: line-through; }
+  .mov-to { color: var(--text); font-weight: 500; }
+  .mov-direction-up { color: var(--green); }
+  .mov-direction-down { color: var(--red); }
+
+  /* HISTORY PANEL */
+  .history-panel { padding: 0 16px; }
+
+  .snapshot-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 8px;
+  }
+
+  .snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .snapshot-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--green);
+  }
+
+  .snapshot-games {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .delete-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .delete-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+
+  .empty-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    margin-bottom: 8px;
+    opacity: 0.4;
+  }
+
+  .empty-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 260px;
+    margin: 0 auto;
+    opacity: 0.5;
+  }
+
+  /* SUMMARY BAR */
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    margin: 0 16px 12px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .summary-cell {
+    background: var(--surface);
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .summary-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .summary-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    line-height: 1.3;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--green);
+    color: #000;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 10px 20px;
+    border-radius: 4px;
+    transition: transform 0.3s ease;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* EXPAND TOGGLE */
+  .expand-toggle {
+    padding: 6px 14px;
+    text-align: center;
+    cursor: pointer;
+    border-top: 1px solid var(--border);
+  }
+
+  .expand-toggle span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .expand-toggle:hover span { color: var(--text); }
+
+  .card-body { display: block; }
+  .card-body.collapsed { display: none; }
+
+  /* LINE VALUE */
+  .line-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  .line-cell {
+    background: var(--surface2);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .line-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .line-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">SHARP<span>MONITOR</span></div>
+    <div class="snapshot-count">SNAPSHOTS: <b id="snapCount">0</b></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('board')">BOARD</button>
+    <button class="tab" onclick="showTab('history')">HISTORY</button>
+  </div>
+</div>
+
+<!-- PASTE SECTION -->
+<div class="paste-section">
+  <div class="paste-label">
+    <div class="dot"></div>
+    PASTE VSIN DATA
+  </div>
+  <textarea id="pasteInput" placeholder="Run bookmarklet on VSiN, then paste here..."></textarea>
+  <div class="paste-actions">
+    <button class="btn btn-secondary" onclick="clearInput()">CLR</button>
+    <button class="btn btn-primary" onclick="processData()">ANALYZE + SAVE SNAPSHOT</button>
+  </div>
+</div>
+
+<!-- BOARD TAB -->
+<div id="tab-board">
+  <div class="board-header">
+    <div class="board-title">Signal Board</div>
+    <div class="last-update" id="lastUpdate">—</div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none">
+    <div class="summary-cell">
+      <div class="summary-num" id="sumGames" style="color:var(--text)">0</div>
+      <div class="summary-desc">GAMES</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num" id="sumWhale" style="color:var(--green)">0</div>
+      <div class="summary-desc">WHALE PLAYS</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num" id="sumTrap" style="color:var(--red)">0</div>
+      <div class="summary-desc">PUB TRAPS</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num" id="sumMoved" style="color:var(--yellow)">0</div>
+      <div class="summary-desc">LINE MOVES</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-chip active" onclick="setFilter('all', this)">ALL</button>
+    <button class="filter-chip" onclick="setFilter('whale', this)">🐋 WHALES</button>
+    <button class="filter-chip" onclick="setFilter('trap', this)">🪤 TRAPS</button>
+    <button class="filter-chip" onclick="setFilter('moved', this)">📈 MOVED</button>
+    <button class="filter-chip" onclick="setFilter('spread', this)">SPREAD</button>
+    <button class="filter-chip" onclick="setFilter('total', this)">TOTAL</button>
+  </div>
+
+  <div class="games-list" id="gamesList">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No Data Yet</div>
+      <div class="empty-desc">Run your VSiN bookmarklet, copy the output, and paste it above to get started.</div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="tab-history" style="display:none">
+  <div class="board-header">
+    <div class="board-title">Snapshots</div>
+    <button class="btn btn-secondary" style="font-size:10px;padding:6px 12px" onclick="clearAllSnapshots()">CLEAR ALL</button>
+  </div>
+  <div class="history-panel" id="historyList">
+    <div class="empty-state">
+      <div class="empty-icon">🕐</div>
+      <div class="empty-title">No Snapshots</div>
+      <div class="empty-desc">Each time you analyze data a snapshot is saved for movement tracking.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── STATE ───────────────────────────────────────────────
+  let snapshots = JSON.parse(localStorage.getItem('sharpmon_snaps') || '[]');
+  let currentGames = [];
+  let activeFilter = 'all';
+  let expandedCards = new Set();
+
+  // ─── PARSER ──────────────────────────────────────────────
+  function parseVSiN(raw) {
+    const lines = raw.trim().split('\n').map(l => l.trim()).filter(l => l);
+    if (!lines.length) return [];
+
+    // Remove header if present
+    let start = 0;
+    if (lines[0].startsWith('Matchup')) start = 1;
+
+    const games = [];
+    let i = start;
+
+    while (i < lines.length) {
+      try {
+        // Away team name (no commas, no numbers at start)
+        const awayLine = lines[i];
+        if (!awayLine || awayLine.startsWith('Matchup')) { i++; continue; }
+
+        // Home team line contains the spread values
+        const homeLine = lines[i + 1] || '';
+
+        // Parse the home line: "Team Name,-spread\n+spread,handle_away\nhandle_home,..."
+        // Data comes as pairs separated by newlines within each "row"
+        // Format: hometeam,-awayspread\n+homespread,awayhandle\nhomehandle,awaybet\nhomebet,total\ntotal,totalhandle_over\ntotalhandle_under,totalbets_over\ntotalbets_under
+
+        // Each game block spans multiple lines in the pasted data
+        // Let's collect all lines for this game until we hit the next team name
+        const gameLines = [awayLine, homeLine];
+        
+        // Collect remaining data lines (they contain commas and numbers)
+        let j = i + 2;
+        while (j < lines.length) {
+          const l = lines[j];
+          // If this looks like a new team name (no comma, not just numbers)
+          if (!l.includes(',') && !/^[\d\.\-\+\s]+$/.test(l) && l.length > 3) break;
+          gameLines.push(l);
+          j++;
+        }
+
+        // Parse from gameLines
+        const game = parseGameBlock(gameLines);
+        if (game) games.push(game);
+
+        i = j;
+      } catch(e) {
+        i++;
+      }
+    }
+
+    return games;
+  }
+
+  function parseGameBlock(lines) {
+    if (lines.length < 2) return null;
+
+    const awayTeam = lines[0].trim();
+    
+    // Second line: "Home Team,-awaySpread" or "Home Team,+awaySpread"
+    const homeLineParts = lines[1].split(',');
+    const homeTeam = homeLineParts[0].replace(/^\s*/, '').trim();
+    
+    // Extract all numeric pairs from remaining lines
+    const pairs = [];
+    for (let k = 1; k < lines.length; k++) {
+      const parts = lines[k].split(',');
+      if (parts.length >= 2) {
+        const a = parseFloat(parts[parts.length - 2]);
+        const b = parseFloat(parts[parts.length - 1]);
+        if (!isNaN(a) || !isNaN(b)) pairs.push([isNaN(a) ? null : a, isNaN(b) ? null : b]);
+      } else if (parts.length === 1) {
+        const v = parseFloat(parts[0]);
+        if (!isNaN(v)) pairs.push([v, null]);
+      }
+    }
+
+    // Try to extract key values from the raw text
+    // Flatten all numeric values in order
+    const allNums = [];
+    for (const line of lines.slice(1)) {
+      for (const part of line.split(',')) {
+        const v = parseFloat(part.trim());
+        if (!isNaN(v)) allNums.push(v);
+      }
+    }
+
+    if (allNums.length < 8) return null;
+
+    // Based on the data format observed:
+    // allNums: [awaySpread, homeSpread, awayHandle, homeHandle, awayBets, homeBets, total1, total2, totalHandleOver, totalHandleUnder, totalBetsOver, totalBetsUnder]
+    const awaySpread = allNums[0];
+    const homeSpread = allNums[1];
+    const awayHandle = allNums[2];
+    const homeHandle = allNums[3];
+    const awayBets = allNums[4];
+    const homeBets = allNums[5];
+    const total = allNums[6];
+    const overHandle = allNums.length > 8 ? allNums[8] : 50;
+    const underHandle = allNums.length > 9 ? allNums[9] : 50;
+    const overBets = allNums.length > 10 ? allNums[10] : 50;
+    const underBets = allNums.length > 11 ? allNums[11] : 50;
+
+    // Determine sharp side for spread
+    const spreadDelta = awayHandle - awayBets;
+    const totalDelta = overHandle - overBets;
+
+    let spreadSignal = 'neutral';
+    let spreadSide = null;
+
+    // Whale: high handle, low bets (sharp money)
+    if (awayHandle >= 55 && awayBets < 45 && Math.abs(spreadDelta) >= 15) {
+      spreadSignal = 'whale';
+      spreadSide = awayTeam;
+    } else if (homeHandle >= 55 && homeBets < 45 && Math.abs(homeHandle - homeBets) >= 15) {
+      spreadSignal = 'whale';
+      spreadSide = homeTeam;
+    }
+    // Public trap: heavy bets, lower handle
+    else if (awayBets >= 65 && awayHandle < awayBets - 15) {
+      spreadSignal = 'trap';
+      spreadSide = homeTeam; // fade the public
+    } else if (homeBets >= 65 && homeHandle < homeBets - 15) {
+      spreadSignal = 'trap';
+      spreadSide = awayTeam;
+    }
+
+    let totalSignal = 'neutral';
+    let totalSide = null;
+    if (overHandle >= 60 && overBets < 50 && (overHandle - overBets) >= 15) {
+      totalSignal = 'whale'; totalSide = 'OVER';
+    } else if (underHandle >= 60 && underBets < 50 && (underHandle - underBets) >= 15) {
+      totalSignal = 'whale'; totalSide = 'UNDER';
+    } else if (overBets >= 65 && overHandle < overBets - 15) {
+      totalSignal = 'trap'; totalSide = 'UNDER';
+    } else if (underBets >= 65 && underHandle < underBets - 15) {
+      totalSignal = 'trap'; totalSide = 'OVER';
+    }
+
+    return {
+      id: `${awayTeam}_${homeTeam}`.replace(/\s+/g, '_'),
+      awayTeam, homeTeam,
+      awaySpread, homeSpread,
+      awayHandle, homeHandle,
+      awayBets, homeBets,
+      total,
+      overHandle, underHandle,
+      overBets, underBets,
+      spreadDelta,
+      totalDelta,
+      spreadSignal, spreadSide,
+      totalSignal, totalSide,
+      overallSignal: spreadSignal !== 'neutral' ? spreadSignal : totalSignal
+    };
+  }
+
+  // ─── MOVEMENT DETECTION ──────────────────────────────────
+  function detectMovements(games) {
+    if (snapshots.length === 0) return {};
+    const prev = snapshots[snapshots.length - 1].games;
+    const movements = {};
+
+    for (const game of games) {
+      const prevGame = prev.find(p => p.id === game.id);
+      if (!prevGame) continue;
+
+      const moves = [];
+
+      if (Math.abs(game.awaySpread - prevGame.awaySpread) >= 0.5) {
+        moves.push({
+          field: 'SPREAD',
+          from: prevGame.awaySpread,
+          to: game.awaySpread,
+          direction: game.awaySpread > prevGame.awaySpread ? 'up' : 'down',
+          team: game.awayTeam
+        });
+      }
+
+      if (Math.abs(game.total - prevGame.total) >= 0.5) {
+        moves.push({
+          field: 'TOTAL',
+          from: prevGame.total,
+          to: game.total,
+          direction: game.total > prevGame.total ? 'up' : 'down'
+        });
+      }
+
+      if (Math.abs(game.awayHandle - prevGame.awayHandle) >= 15) {
+        moves.push({
+          field: 'HANDLE',
+          from: prevGame.awayHandle,
+          to: game.awayHandle,
+          direction: game.awayHandle > prevGame.awayHandle ? 'up' : 'down',
+          team: game.awayTeam
+        });
+      }
+
+      if (moves.length) movements[game.id] = moves;
+    }
+
+    return movements;
+  }
+
+  // ─── RENDER ──────────────────────────────────────────────
+  function renderBoard(games, movements) {
+    const list = document.getElementById('gamesList');
+    const summaryBar = document.getElementById('summaryBar');
+
+    if (!games.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Paste VSiN data above to analyze.</div></div>`;
+      summaryBar.style.display = 'none';
+      return;
+    }
+
+    // Update summary
+    summaryBar.style.display = 'grid';
+    const whales = games.filter(g => g.overallSignal === 'whale').length;
+    const traps = games.filter(g => g.overallSignal === 'trap').length;
+    const moved = Object.keys(movements).length;
+    document.getElementById('sumGames').textContent = games.length;
+    document.getElementById('sumWhale').textContent = whales;
+    document.getElementById('sumTrap').textContent = traps;
+    document.getElementById('sumMoved').textContent = moved;
+
+    // Filter
+    let filtered = games;
+    if (activeFilter === 'whale') filtered = games.filter(g => g.overallSignal === 'whale');
+    else if (activeFilter === 'trap') filtered = games.filter(g => g.overallSignal === 'trap');
+    else if (activeFilter === 'moved') filtered = games.filter(g => movements[g.id]);
+    else if (activeFilter === 'spread') filtered = games.filter(g => g.spreadSignal !== 'neutral');
+    else if (activeFilter === 'total') filtered = games.filter(g => g.totalSignal !== 'neutral');
+
+    // Sort: signals first, then by spread delta
+    filtered.sort((a, b) => {
+      const sigOrder = { whale: 0, trap: 1, neutral: 2 };
+      const aOrder = sigOrder[a.overallSignal];
+      const bOrder = sigOrder[b.overallSignal];
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return Math.abs(b.spreadDelta) - Math.abs(a.spreadDelta);
+    });
+
+    list.innerHTML = filtered.map(game => renderCard(game, movements[game.id] || [])).join('');
+  }
+
+  function renderCard(g, moves) {
+    const isExpanded = expandedCards.has(g.id);
+    const hasMove = moves.length > 0;
+
+    const spreadBadge = g.spreadSignal === 'whale'
+      ? `<span class="signal-badge badge-whale">🐋 WHALE</span>`
+      : g.spreadSignal === 'trap'
+      ? `<span class="signal-badge badge-trap">🪤 TRAP</span>`
+      : `<span class="signal-badge badge-neutral">SPREAD</span>`;
+
+    const totalBadge = g.totalSignal === 'whale'
+      ? `<span class="signal-badge badge-whale">🐋 ${g.totalSide}</span>`
+      : g.totalSignal === 'trap'
+      ? `<span class="signal-badge badge-trap">🪤 ${g.totalSide}</span>`
+      : '';
+
+    const moveBadge = hasMove ? `<span class="signal-badge badge-contested">📈 MOVED</span>` : '';
+
+    const cardClass = g.spreadSignal === 'whale' || g.totalSignal === 'whale' ? 'signal-whale'
+      : g.spreadSignal === 'trap' || g.totalSignal === 'trap' ? 'signal-trap'
+      : hasMove ? 'signal-contested' : '';
+
+    function pct(v) {
+      const cls = v >= 60 ? 'hot' : v <= 30 ? 'cold' : '';
+      return `<span class="split-handle ${cls}">${v}%</span>`;
+    }
+
+    const movementHTML = hasMove ? `
+      <div class="movement-section">
+        <div class="movement-title">↑ Movement Since Last Snapshot</div>
+        <div class="movement-timeline">
+          ${moves.map(m => `
+            <div class="movement-item">
+              <span class="mov-field">${m.field}</span>
+              <span class="mov-from">${m.from}${m.field === 'HANDLE' ? '%' : ''}</span>
+              <span class="mov-arrow mov-direction-${m.direction}">${m.direction === 'up' ? '→' : '→'}</span>
+              <span class="mov-to">${m.to}${m.field === 'HANDLE' ? '%' : ''}</span>
+              ${m.team ? `<span style="color:var(--muted);font-size:9px">(${m.team.split(' ').pop()})</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>` : '';
+
+    const spreadDeltaColor = g.spreadDelta > 15 ? 'delta-pos' : g.spreadDelta < -15 ? 'delta-neg' : 'delta-neutral';
+    const totalDeltaColor = g.totalDelta > 15 ? 'delta-pos' : g.totalDelta < -15 ? 'delta-neg' : 'delta-neutral';
+
+    return `
+    <div class="game-card has-signal ${cardClass}" id="card-${g.id}">
+      <div class="card-header" onclick="toggleCard('${g.id}')">
+        <div>
+          <div class="matchup">
+            <span class="away">${g.awayTeam.split(' ').pop()}</span>
+            <span class="vs">@</span>
+            <span class="home">${g.homeTeam.split(' ').pop()}</span>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
+            ${spreadBadge}${totalBadge}${moveBadge}
+          </div>
+        </div>
+        <span style="color:var(--muted);font-size:16px">${isExpanded ? '▲' : '▼'}</span>
+      </div>
+
+      <div class="card-body ${isExpanded ? '' : 'collapsed'}" id="body-${g.id}">
+        <div class="splits-grid">
+          <div class="split-cell">
+            <div class="split-label">SPREAD HDL</div>
+            <div class="split-row">
+              <span class="split-team">${g.awayTeam.split(' ').pop()}</span>
+              <div class="split-vals">${pct(g.awayHandle)}<span class="split-bets">${g.awayBets}%B</span></div>
+            </div>
+            <div class="split-row">
+              <span class="split-team">${g.homeTeam.split(' ').pop()}</span>
+              <div class="split-vals">${pct(g.homeHandle)}<span class="split-bets">${g.homeBets}%B</span></div>
+            </div>
+          </div>
+          <div class="split-cell">
+            <div class="split-label">TOTAL HDL</div>
+            <div class="split-row">
+              <span class="split-team">OVER</span>
+              <div class="split-vals">${pct(g.overHandle)}<span class="split-bets">${g.overBets}%B</span></div>
+            </div>
+            <div class="split-row">
+              <span class="split-team">UNDER</span>
+              <div class="split-vals">${pct(g.underHandle)}<span class="split-bets">${g.underBets}%B</span></div>
+            </div>
+          </div>
+          <div class="split-cell">
+            <div class="split-label">LINE</div>
+            <div class="split-row">
+              <span class="split-team">SPRD</span>
+              <span class="line-val" style="font-family:'JetBrains Mono',monospace;font-size:12px">${g.awaySpread > 0 ? '+' : ''}${g.awaySpread}</span>
+            </div>
+            <div class="split-row">
+              <span class="split-team">O/U</span>
+              <span class="line-val" style="font-family:'JetBrains Mono',monospace;font-size:12px">${g.total}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="delta-row">
+          <span class="delta-label">SPREAD DELTA (HDL-BETS)</span>
+          <span class="delta-value ${spreadDeltaColor}">${g.spreadDelta > 0 ? '+' : ''}${g.spreadDelta.toFixed(0)}%</span>
+        </div>
+        <div class="delta-row" style="border-top:none">
+          <span class="delta-label">TOTAL DELTA (HDL-BETS)</span>
+          <span class="delta-value ${totalDeltaColor}">${g.totalDelta > 0 ? '+' : ''}${g.totalDelta.toFixed(0)}%</span>
+        </div>
+
+        ${movementHTML}
+      </div>
+
+      <div class="expand-toggle" onclick="toggleCard('${g.id}')">
+        <span>${isExpanded ? 'COLLAPSE ▲' : 'EXPAND ▼'}</span>
+      </div>
+    </div>`;
+  }
+
+  // ─── ACTIONS ─────────────────────────────────────────────
+  function processData() {
+    const raw = document.getElementById('pasteInput').value.trim();
+    if (!raw) { showToast('PASTE DATA FIRST'); return; }
+
+    const games = parseVSiN(raw);
+    if (!games.length) { showToast('PARSE FAILED — CHECK FORMAT'); return; }
+
+    const movements = detectMovements(games);
+
+    // Save snapshot
+    const snap = {
+      id: Date.now(),
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      timestamp: Date.now(),
+      games,
+      gameCount: games.length
+    };
+    snapshots.push(snap);
+    if (snapshots.length > 20) snapshots.shift(); // keep last 20
+    localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
+
+    currentGames = games;
+
+    // Update UI
+    document.getElementById('snapCount').textContent = snapshots.length;
+    document.getElementById('lastUpdate').textContent = snap.time;
+    renderBoard(games, movements);
+    renderHistory();
+    showToast(`✓ ${games.length} GAMES PARSED`);
+    document.getElementById('pasteInput').value = '';
+  }
+
+  function toggleCard(id) {
+    if (expandedCards.has(id)) {
+      expandedCards.delete(id);
+    } else {
+      expandedCards.add(id);
+    }
+    const movements = currentGames.length && snapshots.length > 1
+      ? detectMovements(currentGames)
+      : {};
+    renderBoard(currentGames, movements);
+  }
+
+  function setFilter(f, el) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const movements = currentGames.length && snapshots.length > 1
+      ? detectMovements(currentGames)
+      : {};
+    renderBoard(currentGames, movements);
+  }
+
+  function showTab(tab) {
+    document.getElementById('tab-board').style.display = tab === 'board' ? 'block' : 'none';
+    document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    if (tab === 'history') renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!snapshots.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><div class="empty-title">No Snapshots</div><div class="empty-desc">Each paste saves a snapshot for movement tracking.</div></div>`;
+      return;
+    }
+    list.innerHTML = [...snapshots].reverse().map(snap => `
+      <div class="snapshot-card">
+        <div class="snapshot-header">
+          <div>
+            <div class="snapshot-time">${snap.time}</div>
+            <div class="snapshot-games">${snap.gameCount} GAMES · ${new Date(snap.timestamp).toLocaleDateString()}</div>
+          </div>
+          <button class="delete-btn" onclick="deleteSnapshot(${snap.id})">DELETE</button>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${snap.games.filter(g => g.overallSignal !== 'neutral').map(g =>
+            `<span class="signal-badge ${g.overallSignal === 'whale' ? 'badge-whale' : 'badge-trap'}" style="font-size:9px">
+              ${g.awayTeam.split(' ').pop()} @ ${g.homeTeam.split(' ').pop()}
+            </span>`
+          ).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function deleteSnapshot(id) {
+    snapshots = snapshots.filter(s => s.id !== id);
+    localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
+    document.getElementById('snapCount').textContent = snapshots.length;
+    renderHistory();
+    showToast('SNAPSHOT DELETED');
+  }
+
+  function clearAllSnapshots() {
+    if (!confirm('Clear all snapshots?')) return;
+    snapshots = [];
+    localStorage.removeItem('sharpmon_snaps');
+    document.getElementById('snapCount').textContent = 0;
+    renderHistory();
+    showToast('ALL SNAPSHOTS CLEARED');
+  }
+
+  function clearInput() {
+    document.getElementById('pasteInput').value = '';
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ─── INIT ────────────────────────────────────────────────
+  document.getElementById('snapCount').textContent = snapshots.length;
+  if (snapshots.length) {
+    const last = snapshots[snapshots.length - 1];
+    currentGames = last.games;
+    document.getElementById('lastUpdate').textContent = last.time;
+    const movements = snapshots.length > 1 ? detectMovements(currentGames) : {};
+    renderBoard(currentGames, movements);
+  }
+</script>
+</body>
+</html>
