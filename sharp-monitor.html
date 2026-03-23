@@ -819,6 +819,9 @@
         totalSignal = 'trap'; totalSide = 'OVER';
       }
 
+      // Always store delta from sharp side perspective (positive = sharp money confirmed)
+      const sharpSpreadDelta = awayDominant ? spreadDelta : (homeHandle - homeBets);
+
       return {
         id: `${awayTeam}_${homeTeam}`.replace(/\s+/g, '_'),
         awayTeam, homeTeam,
@@ -830,6 +833,7 @@
         overHandle, underHandle,
         overBets, underBets,
         spreadDelta,
+        sharpSpreadDelta,
         totalDelta,
         spreadSignal, spreadSide,
         totalSignal, totalSide,
@@ -979,6 +983,16 @@
       return Math.abs(b.spreadDelta) - Math.abs(a.spreadDelta);
     });
 
+    // Attach movement deltas directly to game objects for inline display
+    filtered.forEach(game => {
+      const moves = movements[game.id] || [];
+      game.spreadMove = null;
+      game.totalMove = null;
+      for (const m of moves) {
+        if (m.field === 'SPREAD') game.spreadMove = parseFloat((m.to - m.from).toFixed(1));
+        if (m.field === 'TOTAL') game.totalMove = parseFloat((m.to - m.from).toFixed(1));
+      }
+    });
     list.innerHTML = filtered.map(game => renderCard(game, movements[game.id] || [])).join('');
   }
 
@@ -1025,8 +1039,8 @@
         </div>
       </div>` : '';
 
-    const spreadDeltaColor = g.spreadDelta > 15 ? 'delta-pos' : g.spreadDelta < -15 ? 'delta-neg' : 'delta-neutral';
-    const totalDeltaColor = g.totalDelta > 15 ? 'delta-pos' : g.totalDelta < -15 ? 'delta-neg' : 'delta-neutral';
+    const spreadDeltaColor = g.spreadSignal === 'whale' ? 'delta-pos' : g.spreadSignal === 'trap' ? 'delta-neg' : 'delta-neutral';
+    const totalDeltaColor = g.totalSignal === 'whale' ? 'delta-pos' : g.totalSignal === 'trap' ? 'delta-neg' : 'delta-neutral';
 
     return `
     <div class="game-card has-signal ${cardClass}" id="card-${g.id}">
@@ -1038,8 +1052,10 @@
             <span class="vs">@</span>
             <span class="home">${g.homeTeam.split(' ').pop()}</span>
           </div>
-          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
+          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;align-items:center">
             ${spreadBadge}${totalBadge}${moveBadge}
+            ${g.spreadMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">SPRD ${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)}</span>` : ''}
+            ${g.totalMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">O/U ${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)}</span>` : ''}
           </div>
         </div>
         <span style="color:var(--muted);font-size:16px">${isExpanded ? '▲' : '▼'}</span>
@@ -1073,18 +1089,24 @@
             <div class="split-label">LINE</div>
             <div class="split-row">
               <span class="split-team">SPRD</span>
-              <span class="line-val" style="font-family:'JetBrains Mono',monospace;font-size:12px">${g.awaySpread > 0 ? '+' : ''}${g.awaySpread}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500">
+                ${g.awaySpread > 0 ? '+' : ''}${g.awaySpread}
+                ${g.spreadMove ? `<span style="font-size:10px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)})</span>` : ''}
+              </span>
             </div>
             <div class="split-row">
               <span class="split-team">O/U</span>
-              <span class="line-val" style="font-family:'JetBrains Mono',monospace;font-size:12px">${g.total}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500">
+                ${g.total}
+                ${g.totalMove ? `<span style="font-size:10px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)})</span>` : ''}
+              </span>
             </div>
           </div>
         </div>
 
         <div class="delta-row">
-          <span class="delta-label">SPREAD DELTA (HDL-BETS)</span>
-          <span class="delta-value ${spreadDeltaColor}">${g.spreadDelta > 0 ? '+' : ''}${g.spreadDelta.toFixed(0)}%</span>
+          <span class="delta-label">SPREAD DELTA · ${g.spreadSide ? g.spreadSide.split(' ').pop() : 'AWAY'} HDL-BETS</span>
+          <span class="delta-value ${spreadDeltaColor}">+${Math.abs(g.sharpSpreadDelta).toFixed(0)}%</span>
         </div>
         <div class="delta-row" style="border-top:none">
           <span class="delta-label">TOTAL DELTA (HDL-BETS)</span>
