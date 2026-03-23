@@ -600,9 +600,16 @@
 <div id="tab-board">
   <div class="board-header">
     <div class="board-title">Signal Board</div>
-    <div class="last-update" id="lastUpdate">—</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="last-update" id="lastUpdate">—</div>
+      <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;flex:none" onclick="resetDay()" title="Clear all snapshots and start fresh">NEW DAY</button>
+    </div>
   </div>
 
+  <div id="baselineBar" style="display:none;margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+    <span>📌 BASELINE: <span id="baselineTime" style="color:var(--green)">—</span></span>
+    <button onclick="clearBaseline()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace">CLEAR</button>
+  </div>
   <div class="summary-bar" id="summaryBar" style="display:none">
     <div class="summary-cell">
       <div class="summary-num" id="sumGames" style="color:var(--text)">0</div>
@@ -779,24 +786,32 @@
       let spreadSignal = 'neutral';
       let spreadSide = null;
 
-      // Whale: handle significantly exceeds bets (sharp money)
-      if (awayHandle >= 55 && awayBets <= 45 && spreadDelta >= 15) {
-        spreadSignal = 'whale'; spreadSide = awayTeam;
-      } else if (homeHandle >= 55 && homeBets <= 45 && homeDelta >= 15) {
-        spreadSignal = 'whale'; spreadSide = homeTeam;
+      // Use whichever side has dominant handle
+      const awayDominant = awayHandle > homeHandle;
+      const sharpHandle = awayDominant ? awayHandle : homeHandle;
+      const sharpBets = awayDominant ? awayBets : homeBets;
+      const sharpDelta = sharpHandle - sharpBets;
+      const sharpTeam = awayDominant ? awayTeam : homeTeam;
+      const fadeTeam = awayDominant ? homeTeam : awayTeam;
+      const publicBets = awayDominant ? awayBets : homeBets;
+      const publicHandle = awayDominant ? awayHandle : homeHandle;
+
+      // Whale: sharp handle significantly exceeds bets by at least 15 points
+      if (sharpHandle >= 55 && sharpDelta >= 15) {
+        spreadSignal = 'whale'; spreadSide = sharpTeam;
       }
-      // Public trap: heavy tickets, lower handle (fade)
-      else if (awayBets >= 65 && awayHandle < awayBets - 15) {
-        spreadSignal = 'trap'; spreadSide = homeTeam;
-      } else if (homeBets >= 65 && homeHandle < homeBets - 15) {
-        spreadSignal = 'trap'; spreadSide = awayTeam;
+      // Public trap: heavy tickets on one side, handle clearly lower
+      else if (publicBets >= 65 && publicHandle < publicBets - 15) {
+        spreadSignal = 'trap'; spreadSide = fadeTeam;
       }
 
       let totalSignal = 'neutral';
       let totalSide = null;
-      if (overHandle >= 60 && overBets < 50 && totalDelta >= 15) {
+      const underDelta = underHandle - underBets;
+
+      if (overHandle >= 60 && totalDelta >= 15) {
         totalSignal = 'whale'; totalSide = 'OVER';
-      } else if (underHandle >= 60 && underBets < 50 && (underHandle - underBets) >= 15) {
+      } else if (underHandle >= 60 && underDelta >= 15) {
         totalSignal = 'whale'; totalSide = 'UNDER';
       } else if (overBets >= 65 && overHandle < overBets - 15) {
         totalSignal = 'trap'; totalSide = 'UNDER';
@@ -828,7 +843,12 @@
   // ─── MOVEMENT DETECTION ──────────────────────────────────
   function detectMovements(games) {
     if (snapshots.length === 0) return {};
-    const prev = snapshots[snapshots.length - 1].games;
+
+    // Use baseline if set, otherwise use previous snapshot
+    const baseline = getBaseline();
+    const compareSnap = baseline || snapshots[snapshots.length - 1];
+    const prev = compareSnap.games;
+    const isBaseline = !!baseline;
     const movements = {};
 
     for (const game of games) {
@@ -843,7 +863,8 @@
           from: prevGame.awaySpread,
           to: game.awaySpread,
           direction: game.awaySpread > prevGame.awaySpread ? 'up' : 'down',
-          team: game.awayTeam
+          team: game.awayTeam,
+          fromBaseline: isBaseline
         });
       }
 
@@ -852,7 +873,8 @@
           field: 'TOTAL',
           from: prevGame.total,
           to: game.total,
-          direction: game.total > prevGame.total ? 'up' : 'down'
+          direction: game.total > prevGame.total ? 'up' : 'down',
+          fromBaseline: isBaseline
         });
       }
 
@@ -862,7 +884,8 @@
           from: prevGame.awayHandle,
           to: game.awayHandle,
           direction: game.awayHandle > prevGame.awayHandle ? 'up' : 'down',
-          team: game.awayTeam
+          team: game.awayTeam,
+          fromBaseline: isBaseline
         });
       }
 
@@ -870,6 +893,51 @@
     }
 
     return movements;
+  }
+
+  function getBaseline() {
+    const stored = localStorage.getItem('sharpmon_baseline');
+    if (!stored) return null;
+    try { return JSON.parse(stored); } catch(e) { return null; }
+  }
+
+  function setBaseline(snap) {
+    localStorage.setItem('sharpmon_baseline', JSON.stringify(snap));
+    updateBaselineUI();
+  }
+
+  function clearBaseline() {
+    localStorage.removeItem('sharpmon_baseline');
+    updateBaselineUI();
+    showToast('BASELINE CLEARED');
+  }
+
+  function updateBaselineUI() {
+    const baseline = getBaseline();
+    const bar = document.getElementById('baselineBar');
+    const timeEl = document.getElementById('baselineTime');
+    if (baseline) {
+      bar.style.display = 'flex';
+      timeEl.textContent = baseline.time;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  function resetDay() {
+    if (!confirm('Reset for new day? This clears all snapshots and the baseline.')) return;
+    snapshots = [];
+    localStorage.removeItem('sharpmon_snaps');
+    localStorage.removeItem('sharpmon_baseline');
+    currentGames = [];
+    document.getElementById('snapCount').textContent = 0;
+    document.getElementById('lastUpdate').textContent = '—';
+    document.getElementById('summaryBar').style.display = 'none';
+    document.getElementById('baselineBar').style.display = 'none';
+    const list = document.getElementById('gamesList');
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Run your VSiN bookmarklet, copy the output, and paste it above to get started.</div></div>`;
+    renderHistory();
+    showToast('NEW DAY — ALL DATA CLEARED');
   }
 
   // ─── RENDER ──────────────────────────────────────────────
@@ -943,7 +1011,7 @@
 
     const movementHTML = hasMove ? `
       <div class="movement-section">
-        <div class="movement-title">↑ Movement Since Last Snapshot</div>
+        <div class="movement-title">${moves[0] && moves[0].fromBaseline ? '📌 MOVEMENT FROM OPEN' : '↑ MOVEMENT SINCE LAST SNAPSHOT'}</div>
         <div class="movement-timeline">
           ${moves.map(m => `
             <div class="movement-item">
@@ -1050,6 +1118,13 @@
       games,
       gameCount: games.length
     };
+
+    // Auto-set baseline if this is the first snapshot of the day
+    if (snapshots.length === 0 && !getBaseline()) {
+      setBaseline(snap);
+      showToast('📌 BASELINE SET — ' + snap.time);
+    }
+
     snapshots.push(snap);
     if (snapshots.length > 20) snapshots.shift(); // keep last 20
     localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
@@ -1151,11 +1226,12 @@
 
   // ─── INIT ────────────────────────────────────────────────
   document.getElementById('snapCount').textContent = snapshots.length;
+  updateBaselineUI();
   if (snapshots.length) {
     const last = snapshots[snapshots.length - 1];
     currentGames = last.games;
     document.getElementById('lastUpdate').textContent = last.time;
-    const movements = snapshots.length > 1 ? detectMovements(currentGames) : {};
+    const movements = detectMovements(currentGames);
     renderBoard(currentGames, movements);
   }
 </script>
