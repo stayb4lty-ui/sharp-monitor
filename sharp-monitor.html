@@ -619,7 +619,7 @@
   </div>
 
   <div id="baselineBar" style="display:none;margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
-    <span>📌 BASELINE: <span id="baselineTime" style="color:var(--green)">—</span></span>
+    <span>📌 BASELINE: <span id="baselineTime" style="color:var(--green)">—</span> · <span id="baselineBook" style="color:var(--green)">—</span></span>
     <button onclick="clearBaseline()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace">CLEAR</button>
   </div>
   <div class="summary-bar" id="summaryBar" style="display:none">
@@ -898,11 +898,35 @@
   function detectMovements(games) {
     if (snapshots.length === 0) return {};
 
-    // Use baseline if set, otherwise use previous snapshot
+    // Only compare against snapshots from the same book
+    const currentBook = games.length > 0 ? (games[0].book || 'Circa') : 'Circa';
+
+    // Use baseline if it matches the current book, otherwise find most recent same-book snapshot
     const baseline = getBaseline();
-    const compareSnap = baseline || snapshots[snapshots.length - 1];
+    const baselineBook = baseline && baseline.games.length > 0 ? (baseline.games[0].book || 'Circa') : null;
+
+    let compareSnap = null;
+    let isBaseline = false;
+
+    if (baseline && baselineBook === currentBook) {
+      compareSnap = baseline;
+      isBaseline = true;
+    } else {
+      // Find most recent snapshot of the same book (excluding current)
+      const sameBookSnaps = snapshots.filter(s => {
+        const book = s.games && s.games.length > 0 ? (s.games[0].book || 'Circa') : 'Circa';
+        return book === currentBook;
+      });
+      if (sameBookSnaps.length >= 2) {
+        compareSnap = sameBookSnaps[sameBookSnaps.length - 2];
+      } else if (sameBookSnaps.length === 1) {
+        compareSnap = sameBookSnaps[0];
+      }
+    }
+
+    if (!compareSnap) return {};
+
     const prev = compareSnap.games;
-    const isBaseline = !!baseline;
     const movements = {};
 
     for (const game of games) {
@@ -970,9 +994,15 @@
     const baseline = getBaseline();
     const bar = document.getElementById('baselineBar');
     const timeEl = document.getElementById('baselineTime');
+    const bookEl = document.getElementById('baselineBook');
     if (baseline) {
       bar.style.display = 'flex';
       timeEl.textContent = baseline.time;
+      const bBook = baseline.games && baseline.games.length > 0 ? (baseline.games[0].book || 'Circa') : 'Circa';
+      if (bookEl) {
+        bookEl.textContent = bBook;
+        bookEl.style.color = bBook === 'DraftKings' ? 'var(--blue)' : 'var(--green)';
+      }
     } else {
       bar.style.display = 'none';
     }
@@ -1631,7 +1661,7 @@
     const gameNote = notes[g.id] || '';
 
     // Signal score
-    const score = (g.spreadSignal !== 'neutral' || g.totalSignal !== 'neutral') ? calcSignalScore(g, moves, gameLog) : 0;
+    const score = (g.spreadSignal !== 'neutral' || g.totalSignal !== 'neutral') ? calcSignalScore(g, moves, filteredGameLog) : 0;
 
     // Time window indicator — current MT hour
     const nowMT = new Date(Date.now() - 7*60*60*1000);
@@ -1663,7 +1693,10 @@
       return `<span class="split-handle ${cls}">${v}%</span>`;
     }
 
-    const hasAnyMove = hasMove || gameLog.length > 0;
+    // Only show movement entries from the same book as the current game
+    const gameBook = g.book || 'Circa';
+    const filteredGameLog = gameLog.filter(m => !m.book || m.book === gameBook);
+    const hasAnyMove = hasMove || filteredGameLog.length > 0;
 
     const notesHTML = `
       <div class="movement-section" style="border-top:1px solid var(--border)">
@@ -1733,9 +1766,9 @@
 
     const movementHTML = hasAnyMove ? `
       <div class="movement-section">
-        <div class="movement-title">📋 MOVEMENT LOG (${gameLog.length + (hasMove ? 0 : 0)} entries)</div>
+        <div class="movement-title">📋 MOVEMENT LOG · ${gameBook} (${filteredGameLog.length} entries)</div>
         <div class="movement-timeline">
-          ${gameLog.map(m => `
+          ${filteredGameLog.map(m => `
             <div class="movement-item">
               <span class="mov-time">${m.time}</span>
               <span class="mov-field">${m.field}</span>
@@ -1872,10 +1905,17 @@
       book: activeBook
     };
 
-    // Auto-set baseline if this is the first snapshot of the day
-    if (snapshots.length === 0 && !getBaseline()) {
+    // Auto-set baseline if this is the first snapshot of this book today
+    const existingBaseline = getBaseline();
+    const existingBaselineBook = existingBaseline && existingBaseline.games.length > 0 ? (existingBaseline.games[0].book || 'Circa') : null;
+    const sameBookSnapsExisting = snapshots.filter(s => {
+      const b = s.games && s.games.length > 0 ? (s.games[0].book || 'Circa') : 'Circa';
+      return b === activeBook;
+    });
+
+    if (sameBookSnapsExisting.length === 0 && existingBaselineBook !== activeBook) {
       setBaseline(snap);
-      showToast('📌 BASELINE SET — ' + snap.time);
+      showToast('📌 ' + activeBook.toUpperCase() + ' BASELINE SET — ' + snap.time);
     }
 
     snapshots.push(snap);
@@ -1884,7 +1924,7 @@
 
     currentGames = games;
 
-    // Log movements persistently
+    // Log movements persistently — only for same-book comparisons
     if (Object.keys(movements).length > 0) {
       const existingLog = getMovementLog();
       for (const [gameId, moves] of Object.entries(movements)) {
@@ -1893,7 +1933,8 @@
           existingLog[gameId].push({
             ...m,
             time: snap.time,
-            timestamp: snap.timestamp
+            timestamp: snap.timestamp,
+            book: activeBook
           });
         });
       }
