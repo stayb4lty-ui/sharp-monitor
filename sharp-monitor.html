@@ -1084,19 +1084,20 @@
           allReadings.push({ ...r, sport: o.sport, awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
         });
       } else {
-        // Legacy outcome — no snapshot readings, use top-level signal data
+        // Legacy outcome — mark as legacy, exclude from time/score breakdowns
         allReadings.push({
           sport: o.sport,
           awayTeam: o.awayTeam,
           homeTeam: o.homeTeam,
           awayScore: o.awayScore,
           homeScore: o.homeScore,
-          hourMT: o.hourMT || 12,
+          hourMT: null, // null = exclude from time bucket analysis
           spreadCorrect: o.spreadCorrect,
           totalCorrect: o.totalCorrect,
-          signalScore: o.signalScore || 0,
+          signalScore: null, // null = exclude from score analysis
           sharpSpreadTeam: o.spreadSide || null,
-          time: o.date || '—'
+          time: o.date || '—',
+          isLegacy: true
         });
       }
     });
@@ -1115,6 +1116,7 @@
     };
 
     allReadings.forEach(r => {
+      if (r.hourMT === null || r.isLegacy) return; // skip legacy outcomes
       const b = getHourBucket(r.hourMT);
       if (r.spreadCorrect !== null) buckets[b].spread.push(r.spreadCorrect);
       if (r.totalCorrect !== null) buckets[b].total.push(r.totalCorrect);
@@ -1145,7 +1147,8 @@
     // ── By signal strength (using snapshot score) ──
     const scoreGroups = { 'Strong (8-10)': { spread: [], total: [] }, 'Moderate (5-7)': { spread: [], total: [] }, 'Weak (1-4)': { spread: [], total: [] } };
     allReadings.forEach(r => {
-      const s = r.signalScore || 0;
+      if (r.signalScore === null || r.signalScore === undefined || r.isLegacy) return; // skip legacy
+      const s = r.signalScore;
       const group = s >= 8 ? 'Strong (8-10)' : s >= 5 ? 'Moderate (5-7)' : 'Weak (1-4)';
       if (r.spreadCorrect !== null) scoreGroups[group].spread.push(r.spreadCorrect);
       if (r.totalCorrect !== null) scoreGroups[group].total.push(r.totalCorrect);
@@ -1160,6 +1163,12 @@
     });
 
     el.innerHTML = `
+      <!-- Legacy notice -->
+      ${allReadings.filter(r => r.isLegacy).length > 0 ? `
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;letter-spacing:0.05em">
+        ⚠ ${allReadings.filter(r => r.isLegacy).length} LEGACY ENTRIES — Re-log these games to include them in time & score breakdowns
+      </div>` : ''}
+
       <!-- Overall -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:16px">
         <div class="callout">
@@ -1287,7 +1296,7 @@
                   ${r.time} ${r.spreadCorrect !== null ? (r.spreadCorrect ? '✓' : '✗') : '—'}
                 </span>
               `).join('')}
-            </div>` : `<div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">Legacy entry — no snapshot timeline</div>`}
+            </div>` : `<div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--yellow)">⚠ Legacy — re-log to include in time breakdown</div>`}
           </div>
         `).join('')}
       </div>
