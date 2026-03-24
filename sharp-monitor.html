@@ -941,10 +941,69 @@
     const list = document.getElementById('gamesList');
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Run your VSiN bookmarklet, copy the output, and paste it above to get started.</div></div>`;
     renderHistory();
+    localStorage.removeItem('sharpmon_movelog');
+    localStorage.removeItem('sharpmon_notes');
     showToast('NEW DAY — ALL DATA CLEARED');
   }
 
+  function getMovementLog() {
+    try { return JSON.parse(localStorage.getItem('sharpmon_movelog') || '{}'); }
+    catch(e) { return {}; }
+  }
+
+  function getNotes() {
+    try { return JSON.parse(localStorage.getItem('sharpmon_notes') || '{}'); }
+    catch(e) { return {}; }
+  }
+
+  function saveNote(gameId, text) {
+    const notes = getNotes();
+    if (text.trim()) notes[gameId] = text.trim();
+    else delete notes[gameId];
+    localStorage.setItem('sharpmon_notes', JSON.stringify(notes));
+  }
+
   // ─── RENDER ──────────────────────────────────────────────
+  function calcSignalScore(g, moves, gameLog) {
+    let score = 0;
+
+    // Delta strength (0-3 pts)
+    const delta = Math.abs(g.sharpSpreadDelta || 0);
+    if (delta >= 40) score += 3;
+    else if (delta >= 25) score += 2;
+    else if (delta >= 15) score += 1;
+
+    // Total delta (0-2 pts)
+    const tdelta = Math.abs(g.totalDelta || 0);
+    if (tdelta >= 30) score += 2;
+    else if (tdelta >= 15) score += 1;
+
+    // Line movement confirmed (0-2 pts)
+    const hasLineMove = moves.some(m => m.field === 'SPREAD') || gameLog.some(m => m.field === 'SPREAD');
+    const hasTotalMove = moves.some(m => m.field === 'TOTAL') || gameLog.some(m => m.field === 'TOTAL');
+    if (hasLineMove) score += 2;
+    if (hasTotalMove) score += 1;
+
+    // Signal consistency — how many snapshots has this been flagged (0-2 pts)
+    const logEntries = gameLog.length;
+    if (logEntries >= 4) score += 2;
+    else if (logEntries >= 2) score += 1;
+
+    return Math.min(score, 10);
+  }
+
+  function scoreColor(score) {
+    if (score >= 8) return 'var(--green)';
+    if (score >= 5) return 'var(--yellow)';
+    return 'var(--red)';
+  }
+
+  function scoreLabel(score) {
+    if (score >= 8) return 'STRONG';
+    if (score >= 5) return 'MODERATE';
+    return 'WEAK';
+  }
+
   function renderBoard(games, movements) {
     const list = document.getElementById('gamesList');
     const summaryBar = document.getElementById('summaryBar');
@@ -996,9 +1055,26 @@
     list.innerHTML = filtered.map(game => renderCard(game, movements[game.id] || [])).join('');
   }
 
+  // Profitable MT hour windows from user's actual data
+  const PROFITABLE_HOURS = [6,7,9,12,13,19,21]; // 6-8AM, 9-10AM, 12-2PM, 7-9PM, 9-10PM MT
+
   function renderCard(g, moves) {
     const isExpanded = expandedCards.has(g.id);
     const hasMove = moves.length > 0;
+    const fullLog = getMovementLog();
+    const gameLog = fullLog[g.id] || [];
+    const notes = getNotes();
+    const gameNote = notes[g.id] || '';
+
+    // Signal score
+    const score = (g.spreadSignal !== 'neutral' || g.totalSignal !== 'neutral') ? calcSignalScore(g, moves, gameLog) : 0;
+
+    // Time window indicator — current MT hour
+    const nowMT = new Date(Date.now() - 7*60*60*1000);
+    const currentHour = nowMT.getUTCHours();
+    const inGoodWindow = PROFITABLE_HOURS.includes(currentHour);
+    const windowColor = inGoodWindow ? 'var(--green)' : currentHour >= 16 && currentHour <= 19 ? 'var(--yellow)' : 'var(--muted)';
+    const windowLabel = inGoodWindow ? '✓ GOOD WINDOW' : currentHour >= 16 && currentHour <= 19 ? '⚠ MARGINAL' : '— OFF WINDOW';
 
     const spreadBadge = g.spreadSignal === 'whale'
       ? `<span class="signal-badge badge-whale">🐋 WHALE</span>`
@@ -1023,19 +1099,45 @@
       return `<span class="split-handle ${cls}">${v}%</span>`;
     }
 
-    const movementHTML = hasMove ? `
+    const hasAnyMove = hasMove || gameLog.length > 0;
+
+    const notesHTML = `
+      <div class="movement-section" style="border-top:1px solid var(--border)">
+        <div class="movement-title">📝 NOTES</div>
+        <textarea
+          id="note-${g.id}"
+          onchange="saveNote('${g.id}', this.value)"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;line-height:1.5;margin-top:4px"
+          rows="2"
+          placeholder="Add context — injury news, reason for bet/pass..."
+        >${gameNote}</textarea>
+      </div>`;
+
+    const movementHTML = hasAnyMove ? `
       <div class="movement-section">
-        <div class="movement-title">${moves[0] && moves[0].fromBaseline ? '📌 MOVEMENT FROM OPEN' : '↑ MOVEMENT SINCE LAST SNAPSHOT'}</div>
+        <div class="movement-title">📋 MOVEMENT LOG (${gameLog.length + (hasMove ? 0 : 0)} entries)</div>
         <div class="movement-timeline">
-          ${moves.map(m => `
+          ${gameLog.map(m => `
             <div class="movement-item">
+              <span class="mov-time">${m.time}</span>
               <span class="mov-field">${m.field}</span>
               <span class="mov-from">${m.from}${m.field === 'HANDLE' ? '%' : ''}</span>
-              <span class="mov-arrow mov-direction-${m.direction}">${m.direction === 'up' ? '→' : '→'}</span>
+              <span class="mov-arrow mov-direction-${m.direction}">→</span>
+              <span class="mov-to">${m.to}${m.field === 'HANDLE' ? '%' : ''}</span>
+              ${m.team ? `<span style="color:var(--muted);font-size:9px">(${m.team.split(' ').pop()})</span>` : ''}
+              ${m.fromBaseline ? '<span style="color:var(--green);font-size:9px">FROM OPEN</span>' : ''}
+            </div>
+          `).join('')}
+          ${hasMove ? moves.map(m => `
+            <div class="movement-item" style="background:rgba(0,255,135,0.05)">
+              <span class="mov-time" style="color:var(--green)">NOW</span>
+              <span class="mov-field">${m.field}</span>
+              <span class="mov-from">${m.from}${m.field === 'HANDLE' ? '%' : ''}</span>
+              <span class="mov-arrow mov-direction-${m.direction}">→</span>
               <span class="mov-to">${m.to}${m.field === 'HANDLE' ? '%' : ''}</span>
               ${m.team ? `<span style="color:var(--muted);font-size:9px">(${m.team.split(' ').pop()})</span>` : ''}
             </div>
-          `).join('')}
+          `).join('') : ''}
         </div>
       </div>` : '';
 
@@ -1054,6 +1156,7 @@
           </div>
           <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;align-items:center">
             ${spreadBadge}${totalBadge}${moveBadge}
+            ${score > 0 ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:${scoreColor(score)};padding:2px 6px;border:1px solid ${scoreColor(score)};border-radius:2px;opacity:0.9">${score}/10 ${scoreLabel(score)}</span>` : ''}
             ${g.spreadMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">SPRD ${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)}</span>` : ''}
             ${g.totalMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">O/U ${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)}</span>` : ''}
           </div>
@@ -1104,6 +1207,11 @@
           </div>
         </div>
 
+        <div class="delta-row" style="border-top:none;padding-top:4px">
+          <span class="delta-label">BETTING WINDOW (MT)</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${windowColor}">${windowLabel}</span>
+        </div>
+
         <div class="delta-row">
           <span class="delta-label">SPREAD DELTA · ${g.spreadSide ? g.spreadSide.split(' ').pop() : 'AWAY'} HDL-BETS</span>
           <span class="delta-value ${spreadDeltaColor}">+${Math.abs(g.sharpSpreadDelta).toFixed(0)}%</span>
@@ -1113,6 +1221,7 @@
           <span class="delta-value ${totalDeltaColor}">${g.totalDelta > 0 ? '+' : ''}${g.totalDelta.toFixed(0)}%</span>
         </div>
 
+        ${notesHTML}
         ${movementHTML}
       </div>
 
@@ -1152,6 +1261,22 @@
     localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
 
     currentGames = games;
+
+    // Log movements persistently
+    if (Object.keys(movements).length > 0) {
+      const existingLog = getMovementLog();
+      for (const [gameId, moves] of Object.entries(movements)) {
+        if (!existingLog[gameId]) existingLog[gameId] = [];
+        moves.forEach(m => {
+          existingLog[gameId].push({
+            ...m,
+            time: snap.time,
+            timestamp: snap.timestamp
+          });
+        });
+      }
+      localStorage.setItem('sharpmon_movelog', JSON.stringify(existingLog));
+    }
 
     // Update UI
     document.getElementById('snapCount').textContent = snapshots.length;
