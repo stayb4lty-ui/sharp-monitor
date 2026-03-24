@@ -580,6 +580,7 @@
   <div class="tabs">
     <button class="tab active" onclick="showTab('board')">BOARD</button>
     <button class="tab" onclick="showTab('history')">HISTORY</button>
+    <button class="tab" onclick="showTab('analytics')">ANALYTICS</button>
   </div>
 </div>
 
@@ -663,6 +664,27 @@
       <div class="empty-title">No Snapshots</div>
       <div class="empty-desc">Each time you analyze data a snapshot is saved for movement tracking.</div>
     </div>
+  </div>
+</div>
+
+<!-- ANALYTICS TAB -->
+<div id="tab-analytics" style="display:none">
+  <div class="board-header">
+    <div class="board-title">Signal Analytics</div>
+    <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;flex:none" onclick="clearOutcomes()">CLEAR DATA</button>
+  </div>
+
+  <div style="padding:0 16px 16px">
+
+    <!-- Summary stats -->
+    <div id="analyticsContent">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No Outcomes Yet</div>
+        <div class="empty-desc">Log game results from the Board tab to start tracking signal accuracy.</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -963,6 +985,224 @@
     localStorage.setItem('sharpmon_notes', JSON.stringify(notes));
   }
 
+  // ─── OUTCOMES ────────────────────────────────────────────
+  function getOutcomes() {
+    try { return JSON.parse(localStorage.getItem('sharpmon_outcomes') || '[]'); }
+    catch(e) { return []; }
+  }
+
+  function logOutcome(gameId, awayTeam, homeTeam, sport, awayScore, homeScore, signalData) {
+    const outcomes = getOutcomes();
+    // Remove existing entry for this game if re-logging
+    const filtered = outcomes.filter(o => o.gameId !== gameId);
+
+    const spreadCorrect = signalData.spreadSide ? determineSpreadResult(signalData, awayScore, homeScore) : null;
+    const totalCorrect = signalData.totalSide ? determineTotalResult(signalData, awayScore, homeScore) : null;
+
+    filtered.push({
+      gameId, awayTeam, homeTeam, sport,
+      awayScore: parseInt(awayScore),
+      homeScore: parseInt(homeScore),
+      date: new Date().toLocaleDateString(),
+      hourMT: new Date(Date.now() - 7*3600000).getUTCHours(),
+      ...signalData,
+      spreadCorrect,
+      totalCorrect,
+      loggedAt: Date.now()
+    });
+
+    localStorage.setItem('sharpmon_outcomes', JSON.stringify(filtered));
+    showToast('✓ RESULT LOGGED');
+    renderAnalytics();
+  }
+
+  function determineSpreadResult(sig, awayScore, homeScore) {
+    if (!sig.spreadSide || !sig.awaySpread) return null;
+    const away = parseInt(awayScore);
+    const home = parseInt(homeScore);
+    // Figure out if sharp side covered
+    const sharpIsAway = sig.spreadSide === sig.awayTeam;
+    if (sharpIsAway) {
+      return (away + sig.awaySpread) > home;
+    } else {
+      return (home + Math.abs(sig.awaySpread)) > away;
+    }
+  }
+
+  function determineTotalResult(sig, awayScore, homeScore) {
+    if (!sig.totalSide || !sig.total) return null;
+    const combined = parseInt(awayScore) + parseInt(homeScore);
+    if (sig.totalSide === 'OVER') return combined > sig.total;
+    if (sig.totalSide === 'UNDER') return combined < sig.total;
+    return null;
+  }
+
+  function clearOutcomes() {
+    if (!confirm('Clear all outcome data?')) return;
+    localStorage.removeItem('sharpmon_outcomes');
+    renderAnalytics();
+    showToast('OUTCOMES CLEARED');
+  }
+
+  // ─── ANALYTICS RENDERER ──────────────────────────────────
+  function renderAnalytics() {
+    const outcomes = getOutcomes();
+    const el = document.getElementById('analyticsContent');
+
+    if (!outcomes.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Outcomes Yet</div><div class="empty-desc">Log game results from the Board tab to start tracking signal accuracy.</div></div>`;
+      return;
+    }
+
+    const spreadOutcomes = outcomes.filter(o => o.spreadCorrect !== null);
+    const totalOutcomes = outcomes.filter(o => o.totalCorrect !== null);
+    const spreadWins = spreadOutcomes.filter(o => o.spreadCorrect).length;
+    const totalWins = totalOutcomes.filter(o => o.totalCorrect).length;
+
+    // By hour bucket
+    const hourBuckets = {
+      'Early AM (5-9AM)': { spread: [], total: [] },
+      'Mid Morning (9AM-12PM)': { spread: [], total: [] },
+      'Afternoon (12-4PM)': { spread: [], total: [] },
+      'Evening (4-8PM)': { spread: [], total: [] },
+      'Night (8PM+)': { spread: [], total: [] }
+    };
+
+    function getHourBucket(h) {
+      if (h >= 5 && h < 9) return 'Early AM (5-9AM)';
+      if (h >= 9 && h < 12) return 'Mid Morning (9AM-12PM)';
+      if (h >= 12 && h < 16) return 'Afternoon (12-4PM)';
+      if (h >= 16 && h < 20) return 'Evening (4-8PM)';
+      return 'Night (8PM+)';
+    }
+
+    outcomes.forEach(o => {
+      const bucket = getHourBucket(o.hourMT);
+      if (o.spreadCorrect !== null) hourBuckets[bucket].spread.push(o.spreadCorrect);
+      if (o.totalCorrect !== null) hourBuckets[bucket].total.push(o.totalCorrect);
+    });
+
+    // By signal strength
+    const scoreGroups = { 'Strong (8-10)': [], 'Moderate (5-7)': [], 'Weak (1-4)': [] };
+    outcomes.forEach(o => {
+      const s = o.signalScore || 0;
+      const correct = o.spreadCorrect !== null ? o.spreadCorrect : o.totalCorrect;
+      if (correct === null) return;
+      if (s >= 8) scoreGroups['Strong (8-10)'].push(correct);
+      else if (s >= 5) scoreGroups['Moderate (5-7)'].push(correct);
+      else scoreGroups['Weak (1-4)'].push(correct);
+    });
+
+    // By sport
+    const sports = {};
+    outcomes.forEach(o => {
+      if (!sports[o.sport]) sports[o.sport] = { spread: [], total: [] };
+      if (o.spreadCorrect !== null) sports[o.sport].spread.push(o.spreadCorrect);
+      if (o.totalCorrect !== null) sports[o.sport].total.push(o.totalCorrect);
+    });
+
+    function pct(arr) {
+      if (!arr.length) return '—';
+      return Math.round(arr.filter(Boolean).length / arr.length * 100) + '%';
+    }
+
+    function bar(arr) {
+      if (!arr.length) return '';
+      const p = arr.filter(Boolean).length / arr.length;
+      const color = p >= 0.55 ? 'var(--green)' : p >= 0.45 ? 'var(--yellow)' : 'var(--red)';
+      return `<div style="height:4px;background:var(--dim);border-radius:2px;margin-top:4px"><div style="width:${Math.round(p*100)}%;height:100%;background:${color};border-radius:2px"></div></div>`;
+    }
+
+    el.innerHTML = `
+      <!-- Overall summary -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:16px">
+        <div class="callout">
+          <div class="callout-num" style="color:${spreadWins/spreadOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(spreadOutcomes.map(o=>o.spreadCorrect))}</div>
+          <div class="callout-desc">SPREAD SIGNAL<br>ACCURACY (${spreadOutcomes.length} games)</div>
+        </div>
+        <div class="callout">
+          <div class="callout-num" style="color:${totalWins/totalOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(totalOutcomes.map(o=>o.totalCorrect))}</div>
+          <div class="callout-desc">TOTAL SIGNAL<br>ACCURACY (${totalOutcomes.length} games)</div>
+        </div>
+      </div>
+
+      <!-- By time of day -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Time of Day (MT)</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+        ${Object.entries(hourBuckets).map(([label, data]) => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
+            <div>
+              <div style="font-size:12px;font-weight:500">${label}</div>
+              ${bar([...data.spread, ...data.total])}
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">SPRD</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.spread.length}g</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">TOTL</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.total.length}g</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- By signal strength -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+        ${Object.entries(scoreGroups).map(([label, arr]) => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <div>
+              <div style="font-size:12px;font-weight:500">${label}</div>
+              ${bar(arr)}
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${arr.filter(Boolean).length/arr.length >= 0.55 ? 'var(--green)' : arr.length ? 'var(--red)' : 'var(--muted)'}">${pct(arr)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${arr.length} games</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- By sport -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+        ${Object.entries(sports).map(([sport, data]) => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
+            <div style="font-size:12px;font-weight:500">${sport}</div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">SPRD</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">TOTL</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Recent outcomes log -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
+        ${[...getOutcomes()].reverse().slice(0, 20).map(o => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px">
+            <div>
+              <div style="font-size:12px;font-weight:500">${o.awayTeam.split(' ').pop()} @ ${o.homeTeam.split(' ').pop()}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · Score: ${o.awayScore}-${o.homeScore}</div>
+            </div>
+            <div style="text-align:right;display:flex;gap:6px;align-items:center">
+              ${o.spreadCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
+              ${o.totalCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   // ─── RENDER ──────────────────────────────────────────────
   function calcSignalScore(g, moves, gameLog) {
     let score = 0;
@@ -1113,6 +1353,22 @@
         >${gameNote}</textarea>
       </div>`;
 
+    // Outcome logger
+    const outcomeHTML = `
+      <div class="movement-section" style="border-top:1px solid var(--border)">
+        <div class="movement-title">🏀 LOG RESULT</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:6px;align-items:center">
+          <input id="score-away-${g.id}" type="number" placeholder="${g.awayTeam.split(' ').pop()} score"
+            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
+          <input id="score-home-${g.id}" type="number" placeholder="${g.homeTeam.split(' ').pop()} score"
+            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
+          <button onclick="submitOutcome('${g.id}')"
+            style="background:var(--green);color:#000;border:none;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
+            LOG
+          </button>
+        </div>
+      </div>`;
+
     const movementHTML = hasAnyMove ? `
       <div class="movement-section">
         <div class="movement-title">📋 MOVEMENT LOG (${gameLog.length + (hasMove ? 0 : 0)} entries)</div>
@@ -1222,6 +1478,7 @@
         </div>
 
         ${notesHTML}
+        ${outcomeHTML}
         ${movementHTML}
       </div>
 
@@ -1309,12 +1566,42 @@
     renderBoard(currentGames, movements);
   }
 
+  function submitOutcome(gameId) {
+    const game = currentGames.find(g => g.id === gameId);
+    if (!game) return;
+    const awayScore = document.getElementById('score-away-' + gameId).value;
+    const homeScore = document.getElementById('score-home-' + gameId).value;
+    if (!awayScore || !homeScore) { showToast('ENTER BOTH SCORES'); return; }
+
+    const fullLog = getMovementLog();
+    const gameLog = fullLog[gameId] || [];
+    const score = calcSignalScore(game, [], gameLog);
+
+    logOutcome(gameId, game.awayTeam, game.homeTeam, game.sport,
+      awayScore, homeScore, {
+        spreadSide: game.spreadSide,
+        totalSide: game.totalSide,
+        spreadSignal: game.spreadSignal,
+        totalSignal: game.totalSignal,
+        awaySpread: game.awaySpread,
+        total: game.total,
+        awayTeam: game.awayTeam,
+        homeTeam: game.homeTeam,
+        sharpSpreadDelta: game.sharpSpreadDelta,
+        totalDelta: game.totalDelta,
+        hourMT: new Date(Date.now() - 7*3600000).getUTCHours(),
+        signalScore: score
+      });
+  }
+
   function showTab(tab) {
     document.getElementById('tab-board').style.display = tab === 'board' ? 'block' : 'none';
     document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById('tab-analytics').style.display = tab === 'analytics' ? 'block' : 'none';
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     event.target.classList.add('active');
     if (tab === 'history') renderHistory();
+    if (tab === 'analytics') renderAnalytics();
   }
 
   function renderHistory() {
