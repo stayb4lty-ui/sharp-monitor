@@ -226,7 +226,7 @@ textarea::placeholder{color:var(--muted)}
 
 <script>
 // ─── STATE ───────────────────────────────────────────────
-var snaps = JSON.parse(localStorage.getItem('sm_snaps') || '[]');
+var snaps = []; // populated after migration
 var currentGames = [];
 var activeFilter = 'all';
 var expandedCards = {};
@@ -1034,7 +1034,43 @@ function toast(msg) {
   setTimeout(function(){t.classList.remove('show');}, 2500);
 }
 
+// ─── MIGRATION — copy old key format to new keys ────────
+(function() {
+  var keyMap = {
+    'sharpmon_snaps': 'sm_snaps',
+    'sharpmon_outcomes': 'sm_outcomes',
+    'sharpmon_baseline': 'sm_baseline',
+    'sharpmon_esttotals': 'sm_est',
+    'sharpmon_tiptimes': 'sm_tip',
+    'sharpmon_notes': 'sm_notes',
+    'sharpmon_movelog': 'sm_mov_Circa',
+    'sharpmon_movelog_Circa': 'sm_mov_Circa',
+    'sharpmon_movelog_DraftKings': 'sm_mov_DraftKings'
+  };
+  Object.keys(keyMap).forEach(function(oldKey) {
+    var newKey = keyMap[oldKey];
+    var oldVal = localStorage.getItem(oldKey);
+    if (oldVal && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, oldVal);
+    }
+  });
+  // Also migrate old outcomes — mark as legacy if missing snapshotReadings
+  try {
+    var outcomes = JSON.parse(localStorage.getItem('sm_outcomes') || '[]');
+    var changed = false;
+    outcomes = outcomes.map(function(o) {
+      if (!o.hasOwnProperty('isLegacy')) {
+        o.isLegacy = !(o.snapshotReadings && o.snapshotReadings.length);
+        changed = true;
+      }
+      return o;
+    });
+    if (changed) localStorage.setItem('sm_outcomes', JSON.stringify(outcomes));
+  } catch(e) {}
+})();
+
 // ─── INIT ────────────────────────────────────────────────
+snaps = JSON.parse(localStorage.getItem('sm_snaps') || '[]');
 document.getElementById('snapCount').textContent = snaps.length;
 updateBaselineUI();
 if (snaps.length) {
