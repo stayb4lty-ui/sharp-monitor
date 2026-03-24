@@ -1045,158 +1045,230 @@
   }
 
   // ─── ANALYTICS RENDERER ──────────────────────────────────
+  function getHourBucket(h) {
+    if (h >= 5 && h < 9) return 'Early AM (5-9AM)';
+    if (h >= 9 && h < 12) return 'Mid Morning (9-12PM)';
+    if (h >= 12 && h < 16) return 'Afternoon (12-4PM)';
+    if (h >= 16 && h < 20) return 'Evening (4-8PM)';
+    return 'Night (8PM+)';
+  }
+
+  function pct(arr) {
+    if (!arr.length) return '—';
+    return Math.round(arr.filter(Boolean).length / arr.length * 100) + '%';
+  }
+
+  function bar(arr) {
+    if (!arr.length) return '';
+    const p = arr.filter(Boolean).length / arr.length;
+    const color = p >= 0.55 ? 'var(--green)' : p >= 0.45 ? 'var(--yellow)' : 'var(--red)';
+    return `<div style="height:4px;background:var(--dim);border-radius:2px;margin-top:4px"><div style="width:${Math.round(p*100)}%;height:100%;background:${color};border-radius:2px"></div></div>`;
+  }
+
   function renderAnalytics() {
     const outcomes = getOutcomes();
     const el = document.getElementById('analyticsContent');
 
     if (!outcomes.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Outcomes Yet</div><div class="empty-desc">Log game results from the Board tab to start tracking signal accuracy.</div></div>`;
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Outcomes Yet</div><div class="empty-desc">Log game results from the Board tab to start building your signal accuracy database.</div></div>`;
       return;
     }
 
+    // ── Flatten all snapshot readings across all outcomes ──
+    const allReadings = [];
+    outcomes.forEach(o => {
+      (o.snapshotReadings || []).forEach(r => {
+        allReadings.push({ ...r, sport: o.sport, awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
+      });
+    });
+
+    // ── Overall signal accuracy (using final snapshot per game) ──
     const spreadOutcomes = outcomes.filter(o => o.spreadCorrect !== null);
     const totalOutcomes = outcomes.filter(o => o.totalCorrect !== null);
-    const spreadWins = spreadOutcomes.filter(o => o.spreadCorrect).length;
-    const totalWins = totalOutcomes.filter(o => o.totalCorrect).length;
 
-    // By hour bucket
-    const hourBuckets = {
+    // ── By time bucket using snapshot readings ──
+    const buckets = {
       'Early AM (5-9AM)': { spread: [], total: [] },
-      'Mid Morning (9AM-12PM)': { spread: [], total: [] },
+      'Mid Morning (9-12PM)': { spread: [], total: [] },
       'Afternoon (12-4PM)': { spread: [], total: [] },
       'Evening (4-8PM)': { spread: [], total: [] },
       'Night (8PM+)': { spread: [], total: [] }
     };
 
-    function getHourBucket(h) {
-      if (h >= 5 && h < 9) return 'Early AM (5-9AM)';
-      if (h >= 9 && h < 12) return 'Mid Morning (9AM-12PM)';
-      if (h >= 12 && h < 16) return 'Afternoon (12-4PM)';
-      if (h >= 16 && h < 20) return 'Evening (4-8PM)';
-      return 'Night (8PM+)';
-    }
-
-    outcomes.forEach(o => {
-      const bucket = getHourBucket(o.hourMT);
-      if (o.spreadCorrect !== null) hourBuckets[bucket].spread.push(o.spreadCorrect);
-      if (o.totalCorrect !== null) hourBuckets[bucket].total.push(o.totalCorrect);
+    allReadings.forEach(r => {
+      const b = getHourBucket(r.hourMT);
+      if (r.spreadCorrect !== null) buckets[b].spread.push(r.spreadCorrect);
+      if (r.totalCorrect !== null) buckets[b].total.push(r.totalCorrect);
     });
 
-    // By signal strength
-    const scoreGroups = { 'Strong (8-10)': [], 'Moderate (5-7)': [], 'Weak (1-4)': [] };
+    // ── Signal flip analysis ──
+    // For games with multiple snapshots, did early signal match late signal?
+    const flipAnalysis = { flipped: { spread: [], total: [] }, held: { spread: [], total: [] } };
     outcomes.forEach(o => {
-      const s = o.signalScore || 0;
-      const correct = o.spreadCorrect !== null ? o.spreadCorrect : o.totalCorrect;
-      if (correct === null) return;
-      if (s >= 8) scoreGroups['Strong (8-10)'].push(correct);
-      else if (s >= 5) scoreGroups['Moderate (5-7)'].push(correct);
-      else scoreGroups['Weak (1-4)'].push(correct);
+      const readings = o.snapshotReadings || [];
+      if (readings.length < 2) return;
+      const first = readings[0];
+      const last = readings[readings.length - 1];
+
+      // Spread flip detection
+      const spreadFlipped = first.sharpSpreadTeam !== last.sharpSpreadTeam &&
+        first.sharpSpreadTeam !== null && last.sharpSpreadTeam !== null;
+      if (spreadFlipped) {
+        // Was the LATE signal correct?
+        if (last.spreadCorrect !== null) flipAnalysis.flipped.spread.push(last.spreadCorrect);
+        // Was the EARLY signal correct?
+        if (first.spreadCorrect !== null) flipAnalysis.flipped.spread.push(!first.spreadCorrect); // inverse = early was wrong
+      } else if (first.sharpSpreadTeam !== null && last.spreadCorrect !== null) {
+        flipAnalysis.held.spread.push(last.spreadCorrect);
+      }
     });
 
-    // By sport
+    // ── By signal strength (using snapshot score) ──
+    const scoreGroups = { 'Strong (8-10)': { spread: [], total: [] }, 'Moderate (5-7)': { spread: [], total: [] }, 'Weak (1-4)': { spread: [], total: [] } };
+    allReadings.forEach(r => {
+      const s = r.signalScore || 0;
+      const group = s >= 8 ? 'Strong (8-10)' : s >= 5 ? 'Moderate (5-7)' : 'Weak (1-4)';
+      if (r.spreadCorrect !== null) scoreGroups[group].spread.push(r.spreadCorrect);
+      if (r.totalCorrect !== null) scoreGroups[group].total.push(r.totalCorrect);
+    });
+
+    // ── By sport ──
     const sports = {};
-    outcomes.forEach(o => {
-      if (!sports[o.sport]) sports[o.sport] = { spread: [], total: [] };
-      if (o.spreadCorrect !== null) sports[o.sport].spread.push(o.spreadCorrect);
-      if (o.totalCorrect !== null) sports[o.sport].total.push(o.totalCorrect);
+    allReadings.forEach(r => {
+      if (!sports[r.sport]) sports[r.sport] = { spread: [], total: [] };
+      if (r.spreadCorrect !== null) sports[r.sport].spread.push(r.spreadCorrect);
+      if (r.totalCorrect !== null) sports[r.sport].total.push(r.totalCorrect);
     });
-
-    function pct(arr) {
-      if (!arr.length) return '—';
-      return Math.round(arr.filter(Boolean).length / arr.length * 100) + '%';
-    }
-
-    function bar(arr) {
-      if (!arr.length) return '';
-      const p = arr.filter(Boolean).length / arr.length;
-      const color = p >= 0.55 ? 'var(--green)' : p >= 0.45 ? 'var(--yellow)' : 'var(--red)';
-      return `<div style="height:4px;background:var(--dim);border-radius:2px;margin-top:4px"><div style="width:${Math.round(p*100)}%;height:100%;background:${color};border-radius:2px"></div></div>`;
-    }
 
     el.innerHTML = `
-      <!-- Overall summary -->
+      <!-- Overall -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:16px">
         <div class="callout">
-          <div class="callout-num" style="color:${spreadWins/spreadOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(spreadOutcomes.map(o=>o.spreadCorrect))}</div>
-          <div class="callout-desc">SPREAD SIGNAL<br>ACCURACY (${spreadOutcomes.length} games)</div>
+          <div class="callout-num" style="color:${spreadOutcomes.filter(o=>o.spreadCorrect).length/spreadOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(spreadOutcomes.map(o=>o.spreadCorrect))}</div>
+          <div class="callout-desc">SPREAD ACCURACY<br>${spreadOutcomes.length} GAMES</div>
         </div>
         <div class="callout">
-          <div class="callout-num" style="color:${totalWins/totalOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(totalOutcomes.map(o=>o.totalCorrect))}</div>
-          <div class="callout-desc">TOTAL SIGNAL<br>ACCURACY (${totalOutcomes.length} games)</div>
+          <div class="callout-num" style="color:${totalOutcomes.filter(o=>o.totalCorrect).length/totalOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(totalOutcomes.map(o=>o.totalCorrect))}</div>
+          <div class="callout-desc">TOTAL ACCURACY<br>${totalOutcomes.length} GAMES</div>
         </div>
       </div>
 
-      <!-- By time of day -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Time of Day (MT)</div>
+      <!-- Signal flip analysis -->
+      ${flipAnalysis.flipped.spread.length > 0 || flipAnalysis.held.spread.length > 0 ? `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Signal Flip Analysis</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(hourBuckets).map(([label, data]) => `
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <div>
+            <div style="font-size:12px;font-weight:500">Signal held all day</div>
+            <div style="font-size:11px;color:var(--muted)">Early signal = late signal → outcome</div>
+            ${bar(flipAnalysis.held.spread)}
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${flipAnalysis.held.spread.filter(Boolean).length/flipAnalysis.held.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.held.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.held.spread)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${flipAnalysis.held.spread.length} games</div>
+          </div>
+        </div>
+        <div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <div>
+            <div style="font-size:12px;font-weight:500">Signal flipped before tip</div>
+            <div style="font-size:11px;color:var(--muted)">Was the late flip correct?</div>
+            ${bar(flipAnalysis.flipped.spread)}
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${flipAnalysis.flipped.spread.filter(Boolean).length/flipAnalysis.flipped.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.flipped.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.flipped.spread)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${flipAnalysis.flipped.spread.length} games</div>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- By time of day (snapshot level) -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Accuracy By Time Pasted (MT)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">Each snapshot reading evaluated separately — shows which time windows produce accurate signals</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+        ${Object.entries(buckets).map(([label, data]) => `
           <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
             <div>
               <div style="font-size:12px;font-weight:500">${label}</div>
               ${bar([...data.spread, ...data.total])}
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">SPRD</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.spread.length}g</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.spread.length}r</div>
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">TOTL</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.total.length}g</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.total.length}r</div>
             </div>
           </div>
         `).join('')}
       </div>
 
       <!-- By signal strength -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength Score</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(scoreGroups).map(([label, arr]) => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+        ${Object.entries(scoreGroups).map(([label, data]) => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
             <div>
               <div style="font-size:12px;font-weight:500">${label}</div>
-              ${bar(arr)}
+              ${bar([...data.spread, ...data.total])}
             </div>
-            <div style="text-align:right">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${arr.filter(Boolean).length/arr.length >= 0.55 ? 'var(--green)' : arr.length ? 'var(--red)' : 'var(--muted)'}">${pct(arr)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${arr.length} games</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- By sport -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(sports).map(([sport, data]) => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
-            <div style="font-size:12px;font-weight:500">${sport}</div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">SPRD</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">TOTL</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
             </div>
           </div>
         `).join('')}
       </div>
 
-      <!-- Recent outcomes log -->
+      <!-- By sport -->
+      ${Object.keys(sports).length > 1 ? `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+        ${Object.entries(sports).map(([sport, data]) => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
+            <div style="font-size:12px;font-weight:500">${sport}</div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- Recent results -->
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
         ${[...getOutcomes()].reverse().slice(0, 20).map(o => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px">
-            <div>
-              <div style="font-size:12px;font-weight:500">${o.awayTeam.split(' ').pop()} @ ${o.homeTeam.split(' ').pop()}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · Score: ${o.awayScore}-${o.homeScore}</div>
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+            <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start">
+              <div>
+                <div style="font-size:12px;font-weight:500">${o.awayTeam.split(' ').pop()} @ ${o.homeTeam.split(' ').pop()}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · ${o.awayScore}-${o.homeScore} · ${(o.snapshotReadings||[]).length} snapshots</div>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center">
+                ${o.spreadCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
+                ${o.totalCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
+              </div>
             </div>
-            <div style="text-align:right;display:flex;gap:6px;align-items:center">
-              ${o.spreadCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
-              ${o.totalCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
-            </div>
+            <!-- Mini snapshot timeline -->
+            ${(o.snapshotReadings||[]).length > 0 ? `
+            <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+              ${(o.snapshotReadings||[]).map(r => `
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
+                  ${r.time} ${r.spreadCorrect !== null ? (r.spreadCorrect ? '✓' : '✗') : '—'}
+                </span>
+              `).join('')}
+            </div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -1569,13 +1641,73 @@
   function submitOutcome(gameId) {
     const game = currentGames.find(g => g.id === gameId);
     if (!game) return;
-    const awayScore = document.getElementById('score-away-' + gameId).value;
-    const homeScore = document.getElementById('score-home-' + gameId).value;
-    if (!awayScore || !homeScore) { showToast('ENTER BOTH SCORES'); return; }
+    const awayScore = parseInt(document.getElementById('score-away-' + gameId).value);
+    const homeScore = parseInt(document.getElementById('score-home-' + gameId).value);
+    if (isNaN(awayScore) || isNaN(homeScore)) { showToast('ENTER BOTH SCORES'); return; }
+
+    // Pull handle data from EVERY snapshot that contains this game
+    const snapshotReadings = [];
+    snapshots.forEach(snap => {
+      const g = snap.games.find(g => g.id === gameId);
+      if (!g) return;
+
+      const snapTimeMT = new Date(snap.timestamp - 7*3600000);
+      const hourMT = snapTimeMT.getUTCHours();
+      const minuteMT = snapTimeMT.getUTCMinutes();
+
+      // Determine sharp side at this snapshot
+      const awayDominant = g.awayHandle > g.homeHandle;
+      const sharpHandle = awayDominant ? g.awayHandle : g.homeHandle;
+      const sharpBets = awayDominant ? g.awayBets : g.homeBets;
+      const sharpDelta = sharpHandle - sharpBets;
+      const sharpTeam = awayDominant ? g.awayTeam : g.homeTeam;
+
+      // Did the sharp spread side win?
+      let spreadCorrect = null;
+      if (sharpDelta >= 15 && sharpHandle >= 55) {
+        const sharpIsAway = sharpTeam === g.awayTeam;
+        if (sharpIsAway) {
+          spreadCorrect = (awayScore + g.awaySpread) > homeScore;
+        } else {
+          spreadCorrect = (homeScore + Math.abs(g.awaySpread)) > awayScore;
+        }
+      }
+
+      // Did the sharp total side win?
+      let totalCorrect = null;
+      const overDelta = g.overHandle - g.overBets;
+      const underDelta = g.underHandle - g.underBets;
+      const combined = awayScore + homeScore;
+      if (g.overHandle >= 60 && overDelta >= 15) {
+        totalCorrect = combined > g.total;
+      } else if (g.underHandle >= 60 && underDelta >= 15) {
+        totalCorrect = combined < g.total;
+      }
+
+      snapshotReadings.push({
+        time: snap.time,
+        timestamp: snap.timestamp,
+        hourMT,
+        minuteMT,
+        awayHandle: g.awayHandle,
+        homeHandle: g.homeHandle,
+        awayBets: g.awayBets,
+        homeBets: g.homeBets,
+        overHandle: g.overHandle,
+        underHandle: g.underHandle,
+        overBets: g.overBets,
+        underBets: g.underBets,
+        sharpSpreadTeam: sharpDelta >= 15 && sharpHandle >= 55 ? sharpTeam : null,
+        sharpSpreadDelta: sharpDelta,
+        spreadCorrect,
+        totalCorrect,
+        signalScore: calcSignalScore(g, [], [])
+      });
+    });
 
     const fullLog = getMovementLog();
     const gameLog = fullLog[gameId] || [];
-    const score = calcSignalScore(game, [], gameLog);
+    const finalScore = calcSignalScore(game, [], gameLog);
 
     logOutcome(gameId, game.awayTeam, game.homeTeam, game.sport,
       awayScore, homeScore, {
@@ -1589,8 +1721,8 @@
         homeTeam: game.homeTeam,
         sharpSpreadDelta: game.sharpSpreadDelta,
         totalDelta: game.totalDelta,
-        hourMT: new Date(Date.now() - 7*3600000).getUTCHours(),
-        signalScore: score
+        signalScore: finalScore,
+        snapshotReadings  // Full per-snapshot history
       });
   }
 
