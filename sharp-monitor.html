@@ -993,6 +993,7 @@
     renderHistory();
     localStorage.removeItem('sharpmon_movelog');
     localStorage.removeItem('sharpmon_notes');
+    localStorage.removeItem('sharpmon_esttotals');
     showToast('NEW DAY — ALL DATA CLEARED');
   }
 
@@ -1004,6 +1005,18 @@
   function getNotes() {
     try { return JSON.parse(localStorage.getItem('sharpmon_notes') || '{}'); }
     catch(e) { return {}; }
+  }
+
+  function getEstTotals() {
+    try { return JSON.parse(localStorage.getItem('sharpmon_esttotals') || '{}'); }
+    catch(e) { return {}; }
+  }
+
+  function saveEstTotal(gameId, value) {
+    const store = getEstTotals();
+    if (value) store[gameId] = { value: parseFloat(value), lockedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) };
+    else delete store[gameId];
+    localStorage.setItem('sharpmon_esttotals', JSON.stringify(store));
   }
 
   function saveNote(gameId, text) {
@@ -1373,6 +1386,116 @@
           </div>`;
       }).join('')}
 
+      <!-- Est Total Analysis -->
+      ${(() => {
+        const estOutcomes = outcomes.filter(o => o.estTotal && o.estGap !== null && o.totalCorrect !== null);
+        if (estOutcomes.length === 0) return '';
+
+        // Group by gap size and direction
+        const overGap = estOutcomes.filter(o => o.estGap >= 1.5); // EST significantly higher = lean over
+        const underGap = estOutcomes.filter(o => o.estGap <= -1.5); // EST significantly lower = lean under
+        const neutral = estOutcomes.filter(o => Math.abs(o.estGap) < 1.5);
+
+        // Was the est total direction correct?
+        const overCorrect = overGap.filter(o => {
+          const combined = o.awayScore + o.homeScore;
+          return combined > o.marketTotalAtBet;
+        });
+        const underCorrect = underGap.filter(o => {
+          const combined = o.awayScore + o.homeScore;
+          return combined < o.marketTotalAtBet;
+        });
+
+        // By sport breakdown
+        const sportBreakdown = {};
+        estOutcomes.forEach(o => {
+          if (!sportBreakdown[o.sport]) sportBreakdown[o.sport] = { over: [], under: [], neutral: [] };
+          if (o.estGap >= 1.5) sportBreakdown[o.sport].over.push(o);
+          else if (o.estGap <= -1.5) sportBreakdown[o.sport].under.push(o);
+          else sportBreakdown[o.sport].neutral.push(o);
+        });
+
+        // By gap size buckets
+        const gapBuckets = {
+          '1.5-2.9': estOutcomes.filter(o => Math.abs(o.estGap) >= 1.5 && Math.abs(o.estGap) < 3),
+          '3.0-4.9': estOutcomes.filter(o => Math.abs(o.estGap) >= 3 && Math.abs(o.estGap) < 5),
+          '5.0+': estOutcomes.filter(o => Math.abs(o.estGap) >= 5),
+        };
+
+        return \`
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">VSiN Estimated Total Analysis</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">\${estOutcomes.length} games with est total logged</div>
+
+        <!-- Direction accuracy -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <div>
+              <div style="font-size:12px;font-weight:500">EST > Market (Lean Over)</div>
+              <div style="font-size:11px;color:var(--muted)">\${overGap.length} games where estimate was 1.5+ above line</div>
+              \${bar(overGap.map(o => o.awayScore + o.homeScore > o.marketTotalAtBet))}
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:\${overCorrect.length/overGap.length >= 0.55 ? 'var(--green)' : overGap.length ? 'var(--red)' : 'var(--muted)'}">\${pct(overGap.map(o => o.awayScore + o.homeScore > o.marketTotalAtBet))}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${overGap.length} games</div>
+            </div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <div>
+              <div style="font-size:12px;font-weight:500">EST < Market (Lean Under)</div>
+              <div style="font-size:11px;color:var(--muted)">\${underGap.length} games where estimate was 1.5+ below line</div>
+              \${bar(underGap.map(o => o.awayScore + o.homeScore < o.marketTotalAtBet))}
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:\${underCorrect.length/underGap.length >= 0.55 ? 'var(--green)' : underGap.length ? 'var(--red)' : 'var(--muted)'}">\${pct(underGap.map(o => o.awayScore + o.homeScore < o.marketTotalAtBet))}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${underGap.length} games</div>
+            </div>
+          </div>
+          <div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <div style="font-size:12px;font-weight:500">Neutral (within 1.5)</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted)">\${neutral.length} games</div>
+          </div>
+        </div>
+
+        <!-- By gap size -->
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">GAP SIZE ACCURACY</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+          \${Object.entries(gapBuckets).filter(([,arr]) => arr.length > 0).map(([label, arr]) => \`
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+              <div>
+                <div style="font-size:12px;font-weight:500">Gap \${label} pts</div>
+                \${bar(arr.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--text)">\${pct(arr.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${arr.length} games</div>
+              </div>
+            </div>
+          \`).join('')}
+        </div>
+
+        <!-- By sport -->
+        \${Object.keys(sportBreakdown).length > 1 ? \`
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">BY SPORT</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
+          \${Object.entries(sportBreakdown).map(([sport, data]) => {
+            const allSport = [...data.over, ...data.under];
+            const sportCorrect = allSport.filter(o => {
+              const combined = o.awayScore + o.homeScore;
+              return o.estGap > 0 ? combined > o.marketTotalAtBet : combined < o.marketTotalAtBet;
+            });
+            return \`
+              <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center">
+                <div style="font-size:12px;font-weight:500">\${sport}</div>
+                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">GAMES<br><span style="font-size:12px;color:var(--text)">\${allSport.length}</span></div>
+                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">OVER LEAN<br><span style="font-size:12px;color:var(--text)">\${data.over.length}</span></div>
+                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">ACCURACY<br><span style="font-size:13px;font-weight:700;color:\${sportCorrect.length/allSport.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">\${pct(allSport.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}</span></div>
+              </div>
+            \`;
+          }).join('')}
+        </div>\` : ''}
+        \`;
+      })()}
+
       <!-- Recent results -->
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
@@ -1554,6 +1677,44 @@
         >${gameNote}</textarea>
       </div>`;
 
+    // Estimated total
+    const estTotals = getEstTotals();
+    const estEntry = estTotals[g.id];
+    const estLocked = !!estEntry;
+
+    const estTotalHTML = `
+      <div class="movement-section" style="border-top:1px solid var(--border)">
+        <div class="movement-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>📊 VSiN ESTIMATED TOTAL</span>
+          ${estLocked ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green)">🔒 LOCKED ${estEntry.lockedAt}</span>` : ''}
+        </div>
+        ${estLocked ? `
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--green)">${estEntry.value}</div>
+            <div style="font-size:11px;color:var(--muted)">
+              vs market <span style="color:var(--text);font-weight:500">${g.total}</span>
+              ${estEntry.value > g.total ? 
+                `<span style="color:var(--green);margin-left:6px">↑ EST +${(estEntry.value - g.total).toFixed(1)} (LEAN OVER)</span>` : 
+                estEntry.value < g.total ?
+                `<span style="color:var(--red);margin-left:6px">↓ EST -${(g.total - estEntry.value).toFixed(1)} (LEAN UNDER)</span>` :
+                `<span style="color:var(--muted);margin-left:6px">= NEUTRAL</span>`
+              }
+            </div>
+            <button onclick="unlockEstTotal('${g.id}')"
+              style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;margin-left:auto">
+              EDIT
+            </button>
+          </div>` : `
+          <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+            <input id="est-total-${g.id}" type="number" step="0.5" placeholder="Enter VSiN est. total..."
+              style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;flex:1">
+            <button onclick="submitEstTotal('${g.id}')"
+              style="background:var(--blue);color:#000;border:none;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
+              LOCK
+            </button>
+          </div>`}
+      </div>`;
+
     // Outcome logger
     const outcomeHTML = `
       <div class="movement-section" style="border-top:1px solid var(--border)">
@@ -1679,6 +1840,7 @@
           <span class="delta-value ${totalDeltaColor}">${g.totalDelta > 0 ? '+' : ''}${g.totalDelta.toFixed(0)}%</span>
         </div>
 
+        ${estTotalHTML}
         ${notesHTML}
         ${outcomeHTML}
         ${movementHTML}
@@ -1769,6 +1931,21 @@
     renderBoard(currentGames, movements);
   }
 
+  function submitEstTotal(gameId) {
+    const input = document.getElementById('est-total-' + gameId);
+    if (!input || !input.value) { showToast('ENTER ESTIMATED TOTAL'); return; }
+    saveEstTotal(gameId, input.value);
+    const movements = currentGames.length && snapshots.length > 1 ? detectMovements(currentGames) : {};
+    renderBoard(currentGames, movements);
+    showToast('📊 EST TOTAL LOCKED');
+  }
+
+  function unlockEstTotal(gameId) {
+    saveEstTotal(gameId, null);
+    const movements = currentGames.length && snapshots.length > 1 ? detectMovements(currentGames) : {};
+    renderBoard(currentGames, movements);
+  }
+
   function submitOutcome(gameId) {
     const game = currentGames.find(g => g.id === gameId);
     if (!game) return;
@@ -1815,6 +1992,9 @@
         totalCorrect = combined < g.total;
       }
 
+      const estTotalsNow = getEstTotals();
+      const estTotalEntry = estTotalsNow[gameId];
+
       snapshotReadings.push({
         time: snap.time,
         timestamp: snap.timestamp,
@@ -1832,7 +2012,10 @@
         sharpSpreadDelta: sharpDelta,
         spreadCorrect,
         totalCorrect,
-        signalScore: calcSignalScore(g, [], [])
+        signalScore: calcSignalScore(g, [], []),
+        estTotal: estTotalEntry ? estTotalEntry.value : null,
+        marketTotal: g.total,
+        estGap: estTotalEntry ? estTotalEntry.value - g.total : null
       });
     });
 
@@ -1854,7 +2037,10 @@
         totalDelta: game.totalDelta,
         signalScore: finalScore,
         book: game.book || activeBook,
-        snapshotReadings
+        snapshotReadings,
+        estTotal: getEstTotals()[gameId] ? getEstTotals()[gameId].value : null,
+        marketTotalAtBet: game.total,
+        estGap: getEstTotals()[gameId] ? getEstTotals()[gameId].value - game.total : null
       });
   }
 
