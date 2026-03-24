@@ -590,6 +590,17 @@
     <div class="dot"></div>
     PASTE VSIN DATA
   </div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <button id="book-circa" onclick="setBook('Circa')"
+      style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--green);background:var(--green);color:#000;font-weight:700;cursor:pointer;transition:all 0.15s">
+      CIRCA
+    </button>
+    <button id="book-dk" onclick="setBook('DraftKings')"
+      style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s">
+      DRAFTKINGS
+    </button>
+    <span id="book-indicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);letter-spacing:0.08em;align-self:center;margin-left:4px">● CIRCA</span>
+  </div>
   <textarea id="pasteInput" placeholder="Run bookmarklet on VSiN, then paste here..."></textarea>
   <div class="paste-actions">
     <button class="btn btn-secondary" onclick="clearInput()">CLR</button>
@@ -641,6 +652,8 @@
     <button class="filter-chip" onclick="setFilter('NHL', this)">NHL</button>
     <button class="filter-chip" onclick="setFilter('MLB', this)">MLB</button>
     <button class="filter-chip" onclick="setFilter('NCAAM', this)">NCAAM</button>
+    <button class="filter-chip" onclick="setFilter('Circa', this)">CIRCA</button>
+    <button class="filter-chip" onclick="setFilter('DraftKings', this)">DK</button>
   </div>
 
   <div class="games-list" id="gamesList">
@@ -696,6 +709,21 @@
   let currentGames = [];
   let activeFilter = 'all';
   let expandedCards = new Set();
+  let activeBook = 'Circa';
+
+  function setBook(book) {
+    activeBook = book;
+    document.getElementById('book-circa').style.background = book === 'Circa' ? 'var(--green)' : 'none';
+    document.getElementById('book-circa').style.color = book === 'Circa' ? '#000' : 'var(--muted)';
+    document.getElementById('book-circa').style.borderColor = book === 'Circa' ? 'var(--green)' : 'var(--border2)';
+    document.getElementById('book-circa').style.fontWeight = book === 'Circa' ? '700' : '400';
+    document.getElementById('book-dk').style.background = book === 'DraftKings' ? 'var(--blue)' : 'none';
+    document.getElementById('book-dk').style.color = book === 'DraftKings' ? '#000' : 'var(--muted)';
+    document.getElementById('book-dk').style.borderColor = book === 'DraftKings' ? 'var(--blue)' : 'var(--border2)';
+    document.getElementById('book-dk').style.fontWeight = book === 'DraftKings' ? '700' : '400';
+    document.getElementById('book-indicator').textContent = book === 'Circa' ? '● CIRCA' : '● DRAFTKINGS';
+    document.getElementById('book-indicator').style.color = book === 'Circa' ? 'var(--green)' : 'var(--blue)';
+  }
 
   // ─── PARSER ──────────────────────────────────────────────
   const SPORTS = ['NBA','NHL','MLB','NFL','NCAAM'];
@@ -753,7 +781,7 @@
       }
 
       const game = parseGameBlock(block);
-      if (game) { game.sport = currentSport; games.push(game); }
+      if (game) { game.sport = currentSport; game.book = activeBook; games.push(game); }
       i = j;
     }
 
@@ -1081,7 +1109,7 @@
       const readings = o.snapshotReadings || [];
       if (readings.length > 0) {
         readings.forEach(r => {
-          allReadings.push({ ...r, sport: o.sport, awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
+          allReadings.push({ ...r, sport: o.sport, book: o.book || 'Circa', awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
         });
       } else {
         // Legacy outcome — mark as legacy, exclude from time/score breakdowns
@@ -1273,6 +1301,78 @@
         `).join('')}
       </div>` : ''}
 
+      <!-- Per book analytics -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Book</div>
+      ${['Circa', 'DraftKings'].map(book => {
+        const bookOutcomes = outcomes.filter(o => (o.book || 'Circa') === book);
+        const bookReadings = allReadings.filter(r => (r.book || 'Circa') === book && !r.isLegacy);
+        if (!bookOutcomes.length) return `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;padding:16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">No data yet</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted)">Select ${book} before pasting to start building this dataset.</div>
+          </div>`;
+
+        const bSpread = bookOutcomes.filter(o => o.spreadCorrect !== null);
+        const bTotal = bookOutcomes.filter(o => o.totalCorrect !== null);
+
+        // Time buckets for this book
+        const bBuckets = {
+          'Early AM': { spread: [], total: [] },
+          'Mid Morning': { spread: [], total: [] },
+          'Afternoon': { spread: [], total: [] },
+          'Evening': { spread: [], total: [] },
+          'Night': { spread: [], total: [] }
+        };
+        const bucketMap = { 'Early AM (5-9AM)': 'Early AM', 'Mid Morning (9-12PM)': 'Mid Morning', 'Afternoon (12-4PM)': 'Afternoon', 'Evening (4-8PM)': 'Evening', 'Night (8PM+)': 'Night' };
+        bookReadings.forEach(r => {
+          if (r.hourMT === null) return;
+          const bk = bucketMap[getHourBucket(r.hourMT)];
+          if (r.spreadCorrect !== null) bBuckets[bk].spread.push(r.spreadCorrect);
+          if (r.totalCorrect !== null) bBuckets[bk].total.push(r.totalCorrect);
+        });
+
+        return `
+          <div style="background:var(--surface);border:1px solid ${book === 'DraftKings' ? 'rgba(0,176,255,0.3)' : 'rgba(0,255,135,0.3)'};border-radius:4px;margin-bottom:12px;overflow:hidden">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
+              <div style="display:flex;gap:16px">
+                <div style="text-align:center">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${bSpread.filter(o=>o.spreadCorrect).length/bSpread.length >= 0.55 ? 'var(--green)' : bSpread.length ? 'var(--red)' : 'var(--muted)'}">${pct(bSpread.map(o=>o.spreadCorrect))}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">SPREAD · ${bSpread.length}g</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${bTotal.filter(o=>o.totalCorrect).length/bTotal.length >= 0.55 ? 'var(--green)' : bTotal.length ? 'var(--red)' : 'var(--muted)'}">${pct(bTotal.map(o=>o.totalCorrect))}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">TOTAL · ${bTotal.length}g</div>
+                </div>
+              </div>
+            </div>
+            <!-- Time breakdown for this book -->
+            ${Object.entries(bBuckets).some(([,d]) => d.spread.length || d.total.length) ? `
+            <div style="padding:10px 14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px">TIME BREAKDOWN</div>
+              ${Object.entries(bBuckets).filter(([,d]) => d.spread.length || d.total.length).map(([label, d]) => `
+                <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:6px">
+                  <div>
+                    <div style="font-size:11px;color:var(--text)">${label}</div>
+                    ${bar([...d.spread, ...d.total])}
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${d.spread.filter(Boolean).length/d.spread.length >= 0.55 ? 'var(--green)' : d.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.spread)}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted)">SPRD</div>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${d.total.filter(Boolean).length/d.total.length >= 0.55 ? 'var(--green)' : d.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.total)}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted)">TOTL</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--muted)">Log more games to see time breakdown</div>'}
+          </div>`;
+      }).join('')}
+
       <!-- Recent results -->
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
@@ -1372,6 +1472,7 @@
     else if (activeFilter === 'spread') filtered = games.filter(g => g.spreadSignal !== 'neutral');
     else if (activeFilter === 'total') filtered = games.filter(g => g.totalSignal !== 'neutral');
     else if (SPORTS.includes(activeFilter)) filtered = games.filter(g => g.sport === activeFilter);
+    else if (['Circa', 'DraftKings'].includes(activeFilter)) filtered = games.filter(g => (g.book || 'Circa') === activeFilter);
 
     // Sort: signals first, then by spread delta
     filtered.sort((a, b) => {
@@ -1506,6 +1607,7 @@
         <div>
           <div class="matchup">
             <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:6px">${g.sport}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${(g.book||'Circa')==='DraftKings' ? 'var(--blue)' : 'var(--green)'};margin-right:6px">${g.book||'Circa'}</span>
             <span class="away">${g.awayTeam.split(' ').pop()}</span>
             <span class="vs">@</span>
             <span class="home">${g.homeTeam.split(' ').pop()}</span>
@@ -1604,7 +1706,8 @@
       time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       timestamp: Date.now(),
       games,
-      gameCount: games.length
+      gameCount: games.length,
+      book: activeBook
     };
 
     // Auto-set baseline if this is the first snapshot of the day
@@ -1750,7 +1853,8 @@
         sharpSpreadDelta: game.sharpSpreadDelta,
         totalDelta: game.totalDelta,
         signalScore: finalScore,
-        snapshotReadings  // Full per-snapshot history
+        book: game.book || activeBook,
+        snapshotReadings
       });
   }
 
@@ -1775,7 +1879,7 @@
         <div class="snapshot-header">
           <div>
             <div class="snapshot-time">${snap.time}</div>
-            <div class="snapshot-games">${snap.gameCount} GAMES · ${new Date(snap.timestamp).toLocaleDateString()}</div>
+            <div class="snapshot-games">${snap.gameCount} GAMES · ${new Date(snap.timestamp).toLocaleDateString()} · <span style="color:${snap.book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${snap.book || 'Circa'}</span></div>
           </div>
           <button class="delete-btn" onclick="deleteSnapshot(${snap.id})">DELETE</button>
         </div>
