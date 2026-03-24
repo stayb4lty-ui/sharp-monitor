@@ -592,14 +592,14 @@
   </div>
   <div style="display:flex;gap:6px;margin-bottom:8px">
     <button id="book-circa" onclick="setBook('Circa')"
-      style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--green);background:var(--green);color:#000;font-weight:700;cursor:pointer;transition:all 0.15s">
+      style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--green);background:var(--green);color:#000;font-weight:700;cursor:pointer;transition:all 0.15s">
       CIRCA
     </button>
     <button id="book-dk" onclick="setBook('DraftKings')"
-      style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s">
+      style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s">
       DRAFTKINGS
     </button>
-    <span id="book-indicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);letter-spacing:0.08em;align-self:center;margin-left:4px">● CIRCA</span>
+    <span id="book-indicator" style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--green);letter-spacing:0.08em;align-self:center;margin-left:4px">● CIRCA</span>
   </div>
   <textarea id="pasteInput" placeholder="Run bookmarklet on VSiN, then paste here..."></textarea>
   <div class="paste-actions">
@@ -618,9 +618,9 @@
     </div>
   </div>
 
-  <div id="baselineBar" style="display:none;margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+  <div id="baselineBar" style="display:none;margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
     <span>📌 BASELINE: <span id="baselineTime" style="color:var(--green)">—</span> · <span id="baselineBook" style="color:var(--green)">—</span></span>
-    <button onclick="clearBaseline()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace">CLEAR</button>
+    <button onclick="clearBaseline()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:JetBrains Mono,monospace">CLEAR</button>
   </div>
   <div class="summary-bar" id="summaryBar" style="display:none">
     <div class="summary-cell">
@@ -1115,6 +1115,104 @@
     showToast('OUTCOMES CLEARED');
   }
 
+  // ─── EST TOTAL ANALYTICS HELPER ─────────────────────────
+  function renderEstTotalAnalytics(outcomes, allReadings, pct, bar) {
+    const estOutcomes = outcomes.filter(o => o.estTotal && o.estGap !== null);
+    if (estOutcomes.length === 0) return '';
+
+    const overGap = estOutcomes.filter(o => o.estGap >= 1.5);
+    const underGap = estOutcomes.filter(o => o.estGap <= -1.5);
+    const neutral = estOutcomes.filter(o => Math.abs(o.estGap) < 1.5);
+
+    function wasOver(o) { return (o.awayScore + o.homeScore) > o.marketTotalAtBet; }
+    function wasUnder(o) { return (o.awayScore + o.homeScore) < o.marketTotalAtBet; }
+
+    const overAcc = overGap.map(o => wasOver(o));
+    const underAcc = underGap.map(o => wasUnder(o));
+
+    // By gap size
+    const gap1 = estOutcomes.filter(o => Math.abs(o.estGap) >= 1.5 && Math.abs(o.estGap) < 3);
+    const gap2 = estOutcomes.filter(o => Math.abs(o.estGap) >= 3 && Math.abs(o.estGap) < 5);
+    const gap3 = estOutcomes.filter(o => Math.abs(o.estGap) >= 5);
+    function gapAcc(arr) { return arr.map(o => o.estGap > 0 ? wasOver(o) : wasUnder(o)); }
+
+    // By sport
+    const sports = {};
+    estOutcomes.forEach(o => {
+      if (!sports[o.sport]) sports[o.sport] = [];
+      sports[o.sport].push(o);
+    });
+
+    let html = '<div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">VSiN Estimated Total</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">' + estOutcomes.length + ' games logged</div>';
+
+    // Direction accuracy
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
+
+    if (overGap.length > 0) {
+      html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
+      html += '<div><div style="font-size:12px;font-weight:500">EST &gt; Market → Lean OVER</div>';
+      html += '<div style="font-size:11px;color:var(--muted)">' + overGap.length + ' games, est was 1.5+ above line</div>';
+      html += bar(overAcc) + '</div>';
+      const op = pct(overAcc);
+      const oc = overAcc.filter(Boolean).length / overAcc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
+      html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:' + oc + '">' + op + '</div>';
+      html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + overGap.length + ' games</div></div></div>';
+    }
+
+    if (underGap.length > 0) {
+      html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
+      html += '<div><div style="font-size:12px;font-weight:500">EST &lt; Market → Lean UNDER</div>';
+      html += '<div style="font-size:11px;color:var(--muted)">' + underGap.length + ' games, est was 1.5+ below line</div>';
+      html += bar(underAcc) + '</div>';
+      const up = pct(underAcc);
+      const uc = underAcc.filter(Boolean).length / underAcc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
+      html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:' + uc + '">' + up + '</div>';
+      html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + underGap.length + ' games</div></div></div>';
+    }
+
+    html += '<div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
+    html += '<div style="font-size:12px;font-weight:500">Neutral (within 1.5 pts)</div>';
+    html += '<div style="font-family:JetBrains Mono,monospace;font-size:13px;color:var(--muted)">' + neutral.length + ' games</div></div>';
+    html += '</div>';
+
+    // Gap size buckets
+    const gapRows = [[gap1, '1.5 - 2.9 pts'], [gap2, '3.0 - 4.9 pts'], [gap3, '5.0+ pts']].filter(([arr]) => arr.length > 0);
+    if (gapRows.length > 0) {
+      html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;margin-top:4px">GAP SIZE ACCURACY</div>';
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
+      gapRows.forEach(([arr, label]) => {
+        const acc = gapAcc(arr);
+        const p = pct(acc);
+        const c = acc.filter(Boolean).length / acc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
+        html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
+        html += '<div><div style="font-size:12px;font-weight:500">Gap ' + label + '</div>' + bar(acc) + '</div>';
+        html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:' + c + '">' + p + '</div>';
+        html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + arr.length + ' games</div></div></div>';
+      });
+      html += '</div>';
+    }
+
+    // By sport
+    if (Object.keys(sports).length > 1) {
+      html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">BY SPORT</div>';
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
+      Object.entries(sports).forEach(([sport, arr]) => {
+        const acc = arr.map(o => o.estGap > 0 ? wasOver(o) : wasUnder(o));
+        const p = pct(acc);
+        const c = acc.filter(Boolean).length / acc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
+        html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">';
+        html += '<div style="font-size:12px;font-weight:500">' + sport + '</div>';
+        html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);text-align:center">GAMES<br><span style="font-size:12px;color:var(--text)">' + arr.length + '</span></div>';
+        html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);text-align:center">ACCURACY<br><span style="font-size:14px;font-weight:700;color:' + c + '">' + p + '</span></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    return html;
+  }
+
   // ─── ANALYTICS RENDERER ──────────────────────────────────
   function getHourBucket(h) {
     if (h >= 5 && h < 9) return 'Early AM (5-9AM)';
@@ -1236,7 +1334,7 @@
     el.innerHTML = `
       <!-- Legacy notice -->
       ${allReadings.filter(r => r.isLegacy).length > 0 ? `
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;letter-spacing:0.05em">
+      <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;letter-spacing:0.05em">
         ⚠ ${allReadings.filter(r => r.isLegacy).length} LEGACY ENTRIES — Re-log these games to include them in time & score breakdowns
       </div>` : ''}
 
@@ -1254,7 +1352,7 @@
 
       <!-- Signal flip analysis -->
       ${flipAnalysis.flipped.spread.length > 0 || flipAnalysis.held.spread.length > 0 ? `
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Signal Flip Analysis</div>
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Signal Flip Analysis</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
           <div>
@@ -1263,8 +1361,8 @@
             ${bar(flipAnalysis.held.spread)}
           </div>
           <div style="text-align:right">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${flipAnalysis.held.spread.filter(Boolean).length/flipAnalysis.held.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.held.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.held.spread)}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${flipAnalysis.held.spread.length} games</div>
+            <div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:${flipAnalysis.held.spread.filter(Boolean).length/flipAnalysis.held.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.held.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.held.spread)}</div>
+            <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${flipAnalysis.held.spread.length} games</div>
           </div>
         </div>
         <div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
@@ -1274,14 +1372,14 @@
             ${bar(flipAnalysis.flipped.spread)}
           </div>
           <div style="text-align:right">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${flipAnalysis.flipped.spread.filter(Boolean).length/flipAnalysis.flipped.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.flipped.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.flipped.spread)}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${flipAnalysis.flipped.spread.length} games</div>
+            <div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:${flipAnalysis.flipped.spread.filter(Boolean).length/flipAnalysis.flipped.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.flipped.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.flipped.spread)}</div>
+            <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${flipAnalysis.flipped.spread.length} games</div>
           </div>
         </div>
       </div>` : ''}
 
       <!-- By time of day (snapshot level) -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Accuracy By Time Pasted (MT)</div>
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Accuracy By Time Pasted (MT)</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">Each snapshot reading evaluated separately — shows which time windows produce accurate signals</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
         ${Object.entries(buckets).map(([label, data]) => `
@@ -1291,21 +1389,21 @@
               ${bar([...data.spread, ...data.total])}
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.spread.length}r</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${data.spread.length}r</div>
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${data.total.length}r</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${data.total.length}r</div>
             </div>
           </div>
         `).join('')}
       </div>
 
       <!-- By signal strength -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength Score</div>
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength Score</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
         ${Object.entries(scoreGroups).map(([label, data]) => `
           <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
@@ -1314,12 +1412,12 @@
               ${bar([...data.spread, ...data.total])}
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
             </div>
           </div>
         `).join('')}
@@ -1327,33 +1425,33 @@
 
       <!-- By sport -->
       ${Object.keys(sports).length > 1 ? `
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
         ${Object.entries(sports).map(([sport, data]) => `
           <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
             <div style="font-size:12px;font-weight:500">${sport}</div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
             </div>
             <div style="text-align:center">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
             </div>
           </div>
         `).join('')}
       </div>` : ''}
 
       <!-- Per book analytics -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Book</div>
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Book</div>
       ${['Circa', 'DraftKings'].map(book => {
         const bookOutcomes = outcomes.filter(o => (o.book || 'Circa') === book);
         const bookReadings = allReadings.filter(r => (r.book || 'Circa') === book && !r.isLegacy);
         if (!bookOutcomes.length) return `
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;padding:16px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">No data yet</span>
+              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
+              <span style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">No data yet</span>
             </div>
             <div style="font-size:12px;color:var(--muted)">Select ${book} before pasting to start building this dataset.</div>
           </div>`;
@@ -1380,22 +1478,22 @@
         return `
           <div style="background:var(--surface);border:1px solid ${book === 'DraftKings' ? 'rgba(0,176,255,0.3)' : 'rgba(0,255,135,0.3)'};border-radius:4px;margin-bottom:12px;overflow:hidden">
             <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
+              <span style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
               <div style="display:flex;gap:16px">
                 <div style="text-align:center">
-                  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${bSpread.filter(o=>o.spreadCorrect).length/bSpread.length >= 0.55 ? 'var(--green)' : bSpread.length ? 'var(--red)' : 'var(--muted)'}">${pct(bSpread.map(o=>o.spreadCorrect))}</div>
-                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">SPREAD · ${bSpread.length}g</div>
+                  <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:${bSpread.filter(o=>o.spreadCorrect).length/bSpread.length >= 0.55 ? 'var(--green)' : bSpread.length ? 'var(--red)' : 'var(--muted)'}">${pct(bSpread.map(o=>o.spreadCorrect))}</div>
+                  <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">SPREAD · ${bSpread.length}g</div>
                 </div>
                 <div style="text-align:center">
-                  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${bTotal.filter(o=>o.totalCorrect).length/bTotal.length >= 0.55 ? 'var(--green)' : bTotal.length ? 'var(--red)' : 'var(--muted)'}">${pct(bTotal.map(o=>o.totalCorrect))}</div>
-                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">TOTAL · ${bTotal.length}g</div>
+                  <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:${bTotal.filter(o=>o.totalCorrect).length/bTotal.length >= 0.55 ? 'var(--green)' : bTotal.length ? 'var(--red)' : 'var(--muted)'}">${pct(bTotal.map(o=>o.totalCorrect))}</div>
+                  <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">TOTAL · ${bTotal.length}g</div>
                 </div>
               </div>
             </div>
             <!-- Time breakdown for this book -->
             ${Object.entries(bBuckets).some(([,d]) => d.spread.length || d.total.length) ? `
             <div style="padding:10px 14px">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px">TIME BREAKDOWN</div>
+              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px">TIME BREAKDOWN</div>
               ${Object.entries(bBuckets).filter(([,d]) => d.spread.length || d.total.length).map(([label, d]) => `
                 <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:6px">
                   <div>
@@ -1403,12 +1501,12 @@
                     ${bar([...d.spread, ...d.total])}
                   </div>
                   <div style="text-align:center">
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${d.spread.filter(Boolean).length/d.spread.length >= 0.55 ? 'var(--green)' : d.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.spread)}</div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted)">SPRD</div>
+                    <div style="font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:${d.spread.filter(Boolean).length/d.spread.length >= 0.55 ? 'var(--green)' : d.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.spread)}</div>
+                    <div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--muted)">SPRD</div>
                   </div>
                   <div style="text-align:center">
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${d.total.filter(Boolean).length/d.total.length >= 0.55 ? 'var(--green)' : d.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.total)}</div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted)">TOTL</div>
+                    <div style="font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:${d.total.filter(Boolean).length/d.total.length >= 0.55 ? 'var(--green)' : d.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.total)}</div>
+                    <div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--muted)">TOTL</div>
                   </div>
                 </div>
               `).join('')}
@@ -1417,139 +1515,32 @@
       }).join('')}
 
       <!-- Est Total Analysis -->
-      ${(() => {
-        const estOutcomes = outcomes.filter(o => o.estTotal && o.estGap !== null && o.totalCorrect !== null);
-        if (estOutcomes.length === 0) return '';
+      \${renderEstTotalAnalytics(outcomes, allReadings, pct, bar)}
 
-        // Group by gap size and direction
-        const overGap = estOutcomes.filter(o => o.estGap >= 1.5); // EST significantly higher = lean over
-        const underGap = estOutcomes.filter(o => o.estGap <= -1.5); // EST significantly lower = lean under
-        const neutral = estOutcomes.filter(o => Math.abs(o.estGap) < 1.5);
-
-        // Was the est total direction correct?
-        const overCorrect = overGap.filter(o => {
-          const combined = o.awayScore + o.homeScore;
-          return combined > o.marketTotalAtBet;
-        });
-        const underCorrect = underGap.filter(o => {
-          const combined = o.awayScore + o.homeScore;
-          return combined < o.marketTotalAtBet;
-        });
-
-        // By sport breakdown
-        const sportBreakdown = {};
-        estOutcomes.forEach(o => {
-          if (!sportBreakdown[o.sport]) sportBreakdown[o.sport] = { over: [], under: [], neutral: [] };
-          if (o.estGap >= 1.5) sportBreakdown[o.sport].over.push(o);
-          else if (o.estGap <= -1.5) sportBreakdown[o.sport].under.push(o);
-          else sportBreakdown[o.sport].neutral.push(o);
-        });
-
-        // By gap size buckets
-        const gapBuckets = {
-          '1.5-2.9': estOutcomes.filter(o => Math.abs(o.estGap) >= 1.5 && Math.abs(o.estGap) < 3),
-          '3.0-4.9': estOutcomes.filter(o => Math.abs(o.estGap) >= 3 && Math.abs(o.estGap) < 5),
-          '5.0+': estOutcomes.filter(o => Math.abs(o.estGap) >= 5),
-        };
-
-        return \`
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">VSiN Estimated Total Analysis</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">\${estOutcomes.length} games with est total logged</div>
-
-        <!-- Direction accuracy -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-            <div>
-              <div style="font-size:12px;font-weight:500">EST > Market (Lean Over)</div>
-              <div style="font-size:11px;color:var(--muted)">\${overGap.length} games where estimate was 1.5+ above line</div>
-              \${bar(overGap.map(o => o.awayScore + o.homeScore > o.marketTotalAtBet))}
-            </div>
-            <div style="text-align:right">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:\${overCorrect.length/overGap.length >= 0.55 ? 'var(--green)' : overGap.length ? 'var(--red)' : 'var(--muted)'}">\${pct(overGap.map(o => o.awayScore + o.homeScore > o.marketTotalAtBet))}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${overGap.length} games</div>
-            </div>
-          </div>
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-            <div>
-              <div style="font-size:12px;font-weight:500">EST < Market (Lean Under)</div>
-              <div style="font-size:11px;color:var(--muted)">\${underGap.length} games where estimate was 1.5+ below line</div>
-              \${bar(underGap.map(o => o.awayScore + o.homeScore < o.marketTotalAtBet))}
-            </div>
-            <div style="text-align:right">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:\${underCorrect.length/underGap.length >= 0.55 ? 'var(--green)' : underGap.length ? 'var(--red)' : 'var(--muted)'}">\${pct(underGap.map(o => o.awayScore + o.homeScore < o.marketTotalAtBet))}</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${underGap.length} games</div>
-            </div>
-          </div>
-          <div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-            <div style="font-size:12px;font-weight:500">Neutral (within 1.5)</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted)">\${neutral.length} games</div>
-          </div>
-        </div>
-
-        <!-- By gap size -->
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">GAP SIZE ACCURACY</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-          \${Object.entries(gapBuckets).filter(([,arr]) => arr.length > 0).map(([label, arr]) => \`
-            <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-              <div>
-                <div style="font-size:12px;font-weight:500">Gap \${label} pts</div>
-                \${bar(arr.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}
-              </div>
-              <div style="text-align:right">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--text)">\${pct(arr.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}</div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">\${arr.length} games</div>
-              </div>
-            </div>
-          \`).join('')}
-        </div>
-
-        <!-- By sport -->
-        \${Object.keys(sportBreakdown).length > 1 ? \`
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">BY SPORT</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-          \${Object.entries(sportBreakdown).map(([sport, data]) => {
-            const allSport = [...data.over, ...data.under];
-            const sportCorrect = allSport.filter(o => {
-              const combined = o.awayScore + o.homeScore;
-              return o.estGap > 0 ? combined > o.marketTotalAtBet : combined < o.marketTotalAtBet;
-            });
-            return \`
-              <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center">
-                <div style="font-size:12px;font-weight:500">\${sport}</div>
-                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">GAMES<br><span style="font-size:12px;color:var(--text)">\${allSport.length}</span></div>
-                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">OVER LEAN<br><span style="font-size:12px;color:var(--text)">\${data.over.length}</span></div>
-                <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">ACCURACY<br><span style="font-size:13px;font-weight:700;color:\${sportCorrect.length/allSport.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">\${pct(allSport.map(o => o.estGap > 0 ? o.awayScore + o.homeScore > o.marketTotalAtBet : o.awayScore + o.homeScore < o.marketTotalAtBet))}</span></div>
-              </div>
-            \`;
-          }).join('')}
-        </div>\` : ''}
-        \`;
-      })()}
-
-      <!-- Recent results -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
+            <!-- Recent results -->
+      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
         ${[...getOutcomes()].reverse().slice(0, 20).map(o => `
           <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
             <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start">
               <div>
                 <div style="font-size:12px;font-weight:500">${o.awayTeam.split(' ').pop()} @ ${o.homeTeam.split(' ').pop()}</div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · ${o.awayScore}-${o.homeScore} · ${(o.snapshotReadings||[]).length} snapshots</div>
+                <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · ${o.awayScore}-${o.homeScore} · ${(o.snapshotReadings||[]).length} snapshots</div>
               </div>
               <div style="display:flex;gap:4px;align-items:center">
-                ${o.spreadCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
-                ${o.totalCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
+                ${o.spreadCorrect !== null ? `<span style="font-family:JetBrains Mono,monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
+                ${o.totalCorrect !== null ? `<span style="font-family:JetBrains Mono,monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
               </div>
             </div>
             <!-- Mini snapshot timeline — only for new outcomes with full history -->
             ${(o.snapshotReadings||[]).length > 1 ? `
             <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
               ${(o.snapshotReadings||[]).map(r => `
-                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect === true ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
+                <span style="font-family:JetBrains Mono,monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect === true ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
                   ${r.time} ${r.spreadCorrect !== null ? (r.spreadCorrect ? '✓' : '✗') : '—'}
                 </span>
               `).join('')}
-            </div>` : `<div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--yellow)">⚠ Legacy — re-log to include in time breakdown</div>`}
+            </div>` : `<div style="margin-top:4px;font-family:JetBrains Mono,monospace;font-size:9px;color:var(--yellow)">⚠ Legacy — re-log to include in time breakdown</div>`}
           </div>
         `).join('')}
       </div>
@@ -1705,7 +1696,7 @@
         <textarea
           id="note-${g.id}"
           onchange="saveNote('${g.id}', this.value)"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;line-height:1.5;margin-top:4px"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:DM Sans,sans-serif;font-size:12px;padding:8px;resize:none;outline:none;line-height:1.5;margin-top:4px"
           rows="2"
           placeholder="Add context — injury news, reason for bet/pass..."
         >${gameNote}</textarea>
@@ -1720,11 +1711,11 @@
       <div class="movement-section" style="border-top:1px solid var(--border)">
         <div class="movement-title" style="display:flex;justify-content:space-between;align-items:center">
           <span>📊 VSiN ESTIMATED TOTAL</span>
-          ${estLocked ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green)">🔒 LOCKED ${estEntry.lockedAt}</span>` : ''}
+          ${estLocked ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--green)">🔒 LOCKED ${estEntry.lockedAt}</span>` : ''}
         </div>
         ${estLocked ? `
           <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--green)">${estEntry.value}</div>
+            <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:var(--green)">${estEntry.value}</div>
             <div style="font-size:11px;color:var(--muted)">
               vs market <span style="color:var(--text);font-weight:500">${g.total}</span>
               ${estEntry.value > g.total ? 
@@ -1735,15 +1726,15 @@
               }
             </div>
             <button onclick="unlockEstTotal('${g.id}')"
-              style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;margin-left:auto">
+              style="font-family:JetBrains Mono,monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;margin-left:auto">
               EDIT
             </button>
           </div>` : `
           <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
             <input id="est-total-${g.id}" type="number" step="0.5" placeholder="Enter VSiN est. total..."
-              style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;flex:1">
+              style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;flex:1">
             <button onclick="submitEstTotal('${g.id}')"
-              style="background:var(--blue);color:#000;border:none;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
+              style="background:var(--blue);color:#000;border:none;border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
               LOCK
             </button>
           </div>`}
@@ -1755,11 +1746,11 @@
         <div class="movement-title">🏀 LOG RESULT</div>
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:6px;align-items:center">
           <input id="score-away-${g.id}" type="number" placeholder="${g.awayTeam.split(' ').pop()} score"
-            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
+            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
           <input id="score-home-${g.id}" type="number" placeholder="${g.homeTeam.split(' ').pop()} score"
-            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
+            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
           <button onclick="submitOutcome('${g.id}')"
-            style="background:var(--green);color:#000;border:none;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
+            style="background:var(--green);color:#000;border:none;border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
             LOG
           </button>
         </div>
@@ -1801,17 +1792,17 @@
       <div class="card-header" onclick="toggleCard('${g.id}')">
         <div>
           <div class="matchup">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:6px">${g.sport}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${(g.book||'Circa')==='DraftKings' ? 'var(--blue)' : 'var(--green)'};margin-right:6px">${g.book||'Circa'}</span>
+            <span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);margin-right:6px">${g.sport}</span>
+            <span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${(g.book||'Circa')==='DraftKings' ? 'var(--blue)' : 'var(--green)'};margin-right:6px">${g.book||'Circa'}</span>
             <span class="away">${g.awayTeam.split(' ').pop()}</span>
             <span class="vs">@</span>
             <span class="home">${g.homeTeam.split(' ').pop()}</span>
           </div>
           <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;align-items:center">
             ${spreadBadge}${totalBadge}${moveBadge}
-            ${score > 0 ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:${scoreColor(score)};padding:2px 6px;border:1px solid ${scoreColor(score)};border-radius:2px;opacity:0.9">${score}/10 ${scoreLabel(score)}</span>` : ''}
-            ${g.spreadMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">SPRD ${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)}</span>` : ''}
-            ${g.totalMove ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">O/U ${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)}</span>` : ''}
+            ${score > 0 ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;font-weight:700;color:${scoreColor(score)};padding:2px 6px;border:1px solid ${scoreColor(score)};border-radius:2px;opacity:0.9">${score}/10 ${scoreLabel(score)}</span>` : ''}
+            ${g.spreadMove ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">SPRD ${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)}</span>` : ''}
+            ${g.totalMove ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">O/U ${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)}</span>` : ''}
           </div>
         </div>
         <span style="color:var(--muted);font-size:16px">${isExpanded ? '▲' : '▼'}</span>
@@ -1845,14 +1836,14 @@
             <div class="split-label">LINE</div>
             <div class="split-row">
               <span class="split-team">SPRD</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500">
+              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:500">
                 ${g.awaySpread > 0 ? '+' : ''}${g.awaySpread}
                 ${g.spreadMove ? `<span style="font-size:10px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)})</span>` : ''}
               </span>
             </div>
             <div class="split-row">
               <span class="split-team">O/U</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500">
+              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:500">
                 ${g.total}
                 ${g.totalMove ? `<span style="font-size:10px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)})</span>` : ''}
               </span>
@@ -1862,7 +1853,7 @@
 
         <div class="delta-row" style="border-top:none;padding-top:4px">
           <span class="delta-label">BETTING WINDOW (MT)</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${windowColor}">${windowLabel}</span>
+          <span style="font-family:JetBrains Mono,monospace;font-size:11px;color:${windowColor}">${windowLabel}</span>
         </div>
 
         <div class="delta-row">
