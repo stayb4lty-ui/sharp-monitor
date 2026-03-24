@@ -1075,14 +1075,33 @@
     }
 
     // ── Flatten all snapshot readings across all outcomes ──
+    // Falls back to top-level fields for old outcomes without snapshotReadings
     const allReadings = [];
     outcomes.forEach(o => {
-      (o.snapshotReadings || []).forEach(r => {
-        allReadings.push({ ...r, sport: o.sport, awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
-      });
+      const readings = o.snapshotReadings || [];
+      if (readings.length > 0) {
+        readings.forEach(r => {
+          allReadings.push({ ...r, sport: o.sport, awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
+        });
+      } else {
+        // Legacy outcome — no snapshot readings, use top-level signal data
+        allReadings.push({
+          sport: o.sport,
+          awayTeam: o.awayTeam,
+          homeTeam: o.homeTeam,
+          awayScore: o.awayScore,
+          homeScore: o.homeScore,
+          hourMT: o.hourMT || 12,
+          spreadCorrect: o.spreadCorrect,
+          totalCorrect: o.totalCorrect,
+          signalScore: o.signalScore || 0,
+          sharpSpreadTeam: o.spreadSide || null,
+          time: o.date || '—'
+        });
+      }
     });
 
-    // ── Overall signal accuracy (using final snapshot per game) ──
+    // ── Overall signal accuracy ──
     const spreadOutcomes = outcomes.filter(o => o.spreadCorrect !== null);
     const totalOutcomes = outcomes.filter(o => o.totalCorrect !== null);
 
@@ -1102,11 +1121,11 @@
     });
 
     // ── Signal flip analysis ──
-    // For games with multiple snapshots, did early signal match late signal?
+    // Only applies to outcomes with multiple snapshot readings
     const flipAnalysis = { flipped: { spread: [], total: [] }, held: { spread: [], total: [] } };
     outcomes.forEach(o => {
       const readings = o.snapshotReadings || [];
-      if (readings.length < 2) return;
+      if (readings.length < 2) return; // Skip legacy outcomes and single-snapshot games
       const first = readings[0];
       const last = readings[readings.length - 1];
 
@@ -1260,15 +1279,15 @@
                 ${o.totalCorrect !== null ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
               </div>
             </div>
-            <!-- Mini snapshot timeline -->
-            ${(o.snapshotReadings||[]).length > 0 ? `
+            <!-- Mini snapshot timeline — only for new outcomes with full history -->
+            ${(o.snapshotReadings||[]).length > 1 ? `
             <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
               ${(o.snapshotReadings||[]).map(r => `
-                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect === true ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
                   ${r.time} ${r.spreadCorrect !== null ? (r.spreadCorrect ? '✓' : '✗') : '—'}
                 </span>
               `).join('')}
-            </div>` : ''}
+            </div>` : `<div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">Legacy entry — no snapshot timeline</div>`}
           </div>
         `).join('')}
       </div>
