@@ -1660,6 +1660,10 @@
     const notes = getNotes();
     const gameNote = notes[g.id] || '';
 
+    // Filter movement log by book — must be before score calculation
+    const gameBook = g.book || 'Circa';
+    const filteredGameLog = gameLog.filter(m => !m.book || m.book === gameBook);
+
     // Signal score
     const score = (g.spreadSignal !== 'neutral' || g.totalSignal !== 'neutral') ? calcSignalScore(g, moves, filteredGameLog) : 0;
 
@@ -1693,9 +1697,6 @@
       return `<span class="split-handle ${cls}">${v}%</span>`;
     }
 
-    // Only show movement entries from the same book as the current game
-    const gameBook = g.book || 'Circa';
-    const filteredGameLog = gameLog.filter(m => !m.book || m.book === gameBook);
     const hasAnyMove = hasMove || filteredGameLog.length > 0;
 
     const notesHTML = `
