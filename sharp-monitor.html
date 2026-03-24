@@ -6,604 +6,163 @@
 <title>Sharp Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #080808;
-    --surface: #111;
-    --surface2: #181818;
-    --border: #222;
-    --border2: #2a2a2a;
-    --green: #00ff87;
-    --red: #ff3d5a;
-    --yellow: #ffc107;
-    --blue: #00b4d8;
-    --purple: #b388ff;
-    --text: #f0f0f0;
-    --muted: #555;
-    --dim: #2a2a2a;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Epilogue', sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-    padding-bottom: 40px;
-  }
-
-  /* HEADER */
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 16px 12px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .header-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-
-  .logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 0.1em;
-    color: var(--text);
-  }
-
-  .logo span { color: var(--green); }
-
-  .snapshot-count {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-  }
-
-  .snapshot-count b { color: var(--green); }
-
-  /* TABS */
-  .tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 0;
-  }
-
-  .tab {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 6px 12px;
-    border-radius: 3px;
-    border: 1px solid var(--border2);
-    background: none;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .tab.active { background: var(--green); color: #000; border-color: var(--green); font-weight: 700; }
-  .tab:not(.active):hover { border-color: #444; color: var(--text); }
-
-  /* PASTE AREA */
-  .paste-section {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .paste-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .paste-label .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  textarea {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 12px;
-    resize: none;
-    height: 100px;
-    outline: none;
-    transition: border-color 0.2s;
-    line-height: 1.5;
-  }
-
-  textarea:focus { border-color: var(--green); }
-  textarea::placeholder { color: var(--muted); }
-
-  .paste-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 10px 16px;
-    border-radius: 3px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s;
-    flex: 1;
-  }
-
-  .btn-primary { background: var(--green); color: #000; font-weight: 700; }
-  .btn-primary:hover { background: #00e676; }
-  .btn-primary:active { transform: scale(0.97); }
-
-  .btn-secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); flex: 0; padding: 10px 14px; }
-  .btn-secondary:hover { color: var(--text); border-color: #444; }
-
-  /* SIGNAL BOARD */
-  .board-header {
-    padding: 12px 16px 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .board-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 0.08em;
-    color: var(--text);
-  }
-
-  .last-update {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  /* FILTER BAR */
-  .filter-bar {
-    padding: 0 16px 12px;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .filter-bar::-webkit-scrollbar { display: none; }
-
-  .filter-chip {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    padding: 5px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--border2);
-    background: none;
-    color: var(--muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s;
-  }
-
-  .filter-chip.active { background: var(--surface2); color: var(--text); border-color: #444; }
-  .filter-chip:hover { border-color: #444; color: var(--text); }
-
-  /* GAME CARDS */
-  .games-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
-
-  .game-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-
-  .game-card.has-signal { border-color: #2a2a2a; }
-  .game-card.signal-whale { border-left: 3px solid var(--green); }
-  .game-card.signal-trap { border-left: 3px solid var(--red); }
-  .game-card.signal-contested { border-left: 3px solid var(--yellow); }
-
-  .card-header {
-    padding: 10px 14px 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-  }
-
-  .matchup {
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.3;
-  }
-
-  .matchup .away { color: var(--text); }
-  .matchup .vs { color: var(--muted); font-size: 10px; margin: 0 4px; }
-  .matchup .home { color: var(--text); }
-
-  .signal-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    padding: 3px 7px;
-    border-radius: 2px;
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-    margin-left: 8px;
-    flex-shrink: 0;
-  }
-
-  .badge-whale { background: rgba(0,255,135,0.12); color: var(--green); border: 1px solid rgba(0,255,135,0.25); }
-  .badge-trap { background: rgba(255,61,90,0.12); color: var(--red); border: 1px solid rgba(255,61,90,0.25); }
-  .badge-neutral { background: var(--surface2); color: var(--muted); border: 1px solid var(--border2); }
-  .badge-contested { background: rgba(255,193,7,0.1); color: var(--yellow); border: 1px solid rgba(255,193,7,0.2); }
-
-  /* SPLITS GRID */
-  .splits-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-  }
-
-  .split-cell {
-    background: var(--surface);
-    padding: 10px 12px;
-  }
-
-  .split-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .split-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 3px;
-  }
-
-  .split-team {
-    font-size: 11px;
-    color: var(--muted);
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .split-vals {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .split-handle {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .split-bets {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  .hot { color: var(--green); }
-  .cold { color: var(--muted); }
-  .warm { color: var(--yellow); }
-
-  /* DELTA INDICATOR */
-  .delta-row {
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-top: 1px solid var(--border);
-    background: var(--surface2);
-  }
-
-  .delta-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-  }
-
-  .delta-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .delta-pos { color: var(--green); }
-  .delta-neg { color: var(--red); }
-  .delta-neutral { color: var(--muted); }
-
-  /* MOVEMENT TRACKER */
-  .movement-section {
-    border-top: 1px solid var(--border);
-    padding: 10px 14px;
-  }
-
-  .movement-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .movement-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .movement-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-  }
-
-  .mov-time { color: var(--muted); min-width: 45px; }
-  .mov-field { color: var(--muted); min-width: 50px; }
-  .mov-arrow { font-size: 12px; }
-  .mov-from { color: var(--muted); text-decoration: line-through; }
-  .mov-to { color: var(--text); font-weight: 500; }
-  .mov-direction-up { color: var(--green); }
-  .mov-direction-down { color: var(--red); }
-
-  /* HISTORY PANEL */
-  .history-panel { padding: 0 16px; }
-
-  .snapshot-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 14px;
-    margin-bottom: 8px;
-  }
-
-  .snapshot-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .snapshot-time {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--green);
-  }
-
-  .snapshot-games {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  .delete-btn {
-    background: none;
-    border: 1px solid var(--border2);
-    color: var(--muted);
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.05em;
-  }
-
-  .delete-btn:hover { border-color: var(--red); color: var(--red); }
-
-  /* EMPTY STATE */
-  .empty-state {
-    text-align: center;
-    padding: 60px 24px;
-    color: var(--muted);
-  }
-
-  .empty-icon {
-    font-size: 40px;
-    margin-bottom: 16px;
-    opacity: 0.4;
-  }
-
-  .empty-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 0.1em;
-    color: var(--text);
-    margin-bottom: 8px;
-    opacity: 0.4;
-  }
-
-  .empty-desc {
-    font-size: 13px;
-    line-height: 1.6;
-    max-width: 260px;
-    margin: 0 auto;
-    opacity: 0.5;
-  }
-
-  /* SUMMARY BAR */
-  .summary-bar {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    margin: 0 16px 12px;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .summary-cell {
-    background: var(--surface);
-    padding: 10px 8px;
-    text-align: center;
-  }
-
-  .summary-num {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    line-height: 1;
-    margin-bottom: 2px;
-  }
-
-  .summary-desc {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    line-height: 1.3;
-  }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--green);
-    color: #000;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: 10px 20px;
-    border-radius: 4px;
-    transition: transform 0.3s ease;
-    z-index: 999;
-    white-space: nowrap;
-  }
-
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* EXPAND TOGGLE */
-  .expand-toggle {
-    padding: 6px 14px;
-    text-align: center;
-    cursor: pointer;
-    border-top: 1px solid var(--border);
-  }
-
-  .expand-toggle span {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .expand-toggle:hover span { color: var(--text); }
-
-  .card-body { display: block; }
-  .card-body.collapsed { display: none; }
-
-  /* LINE VALUE */
-  .line-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-    border-top: 1px solid var(--border);
-  }
-
-  .line-cell {
-    background: var(--surface2);
-    padding: 8px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .line-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-  }
-
-  .line-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 500;
-  }
+:root {
+  --bg:#080808; --surface:#111; --surface2:#181818; --border:#222; --border2:#2a2a2a;
+  --green:#00ff87; --red:#ff3d5a; --yellow:#ffc107; --blue:#00b4d8; --muted:#555; --dim:#2a2a2a;
+  --text:#f0f0f0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Epilogue',sans-serif;font-size:14px;min-height:100vh;padding-bottom:40px}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px 10px;position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.1em}
+.logo span{color:var(--green)}
+.snap-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.snap-count b{color:var(--green)}
+.tabs{display:flex;gap:4px}
+.tab{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:3px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all .15s}
+.tab.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+.paste-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.paste-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.book-btns{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.book-btn{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:6px 14px;border-radius:3px;cursor:pointer;transition:all .15s;font-weight:400}
+.book-indicator{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;margin-left:4px}
+textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:10px;resize:none;height:90px;outline:none;transition:border-color .2s;line-height:1.5}
+textarea:focus{border-color:var(--green)}
+textarea::placeholder{color:var(--muted)}
+.paste-actions{display:flex;gap:8px;margin-top:8px}
+.btn{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;border-radius:3px;border:none;cursor:pointer;transition:all .15s;flex:1}
+.btn-primary{background:var(--green);color:#000;font-weight:700}
+.btn-primary:active{transform:scale(.97)}
+.btn-secondary{background:var(--surface2);color:var(--muted);border:1px solid var(--border2);flex:0;padding:10px 14px}
+.btn-secondary:hover{color:var(--text);border-color:#444}
+.board-header{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.board-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.08em}
+.baseline-bar{margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);margin:0 16px 10px;border-radius:4px;overflow:hidden}
+.sum-cell{background:var(--surface);padding:10px 8px;text-align:center}
+.sum-num{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;margin-bottom:2px}
+.sum-desc{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.08em;line-height:1.3}
+.filter-bar{padding:0 16px 10px;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.chip{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s}
+.chip.active{background:var(--surface2);color:var(--text);border-color:#444}
+.games-list{padding:0 16px;display:flex;flex-direction:column;gap:7px}
+.game-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .2s}
+.card-left-whale{border-left:3px solid var(--green)}
+.card-left-trap{border-left:3px solid var(--red)}
+.card-left-moved{border-left:3px solid var(--yellow)}
+.card-header{padding:10px 14px 8px;display:flex;align-items:start;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--border)}
+.matchup-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:2px;letter-spacing:.08em;white-space:nowrap}
+.badge-whale{background:rgba(0,255,135,.12);color:var(--green);border:1px solid rgba(0,255,135,.25)}
+.badge-trap{background:rgba(255,61,90,.12);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+.badge-neutral{background:var(--surface2);color:var(--muted);border:1px solid var(--border2)}
+.badge-moved{background:rgba(255,193,7,.1);color:var(--yellow);border:1px solid rgba(255,193,7,.2)}
+.badge-score-strong{background:rgba(0,255,135,.1);color:var(--green);border:1px solid rgba(0,255,135,.3);font-weight:700}
+.badge-score-mod{background:rgba(255,193,7,.1);color:var(--yellow);border:1px solid rgba(255,193,7,.2);font-weight:700}
+.badge-score-weak{background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.2);font-weight:700}
+.move-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em}
+.splits-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.split-cell{background:var(--surface);padding:10px 12px}
+.split-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.split-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.split-team{font-size:11px;color:var(--muted);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-hot{color:var(--green);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
+.h-cold{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px}
+.h-bets{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+.delta-row{padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);background:var(--surface2)}
+.delta-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em}
+.delta-pos{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--green)}
+.delta-neg{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--red)}
+.delta-neu{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--muted)}
+.card-section{border-top:1px solid var(--border);padding:10px 14px}
+.section-title{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.locked-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.input-row{display:flex;gap:6px;align-items:center;margin-top:4px}
+.card-input{background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;outline:none;flex:1}
+.lock-btn{background:var(--blue);color:#000;border:none;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.green-btn{background:var(--green)}
+.edit-btn{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer}
+.mov-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;margin-bottom:4px}
+.mov-time{color:var(--muted);min-width:48px}
+.mov-field{color:var(--muted);min-width:52px}
+.mov-from{color:var(--muted);text-decoration:line-through}
+.mov-to{color:var(--text);font-weight:500}
+.mov-up{color:var(--green)}
+.mov-dn{color:var(--red)}
+.expand-toggle{padding:6px 14px;text-align:center;cursor:pointer;border-top:1px solid var(--border)}
+.expand-toggle span{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.expand-toggle:hover span{color:var(--text)}
+.card-body-hidden{display:none}
+.notes-ta{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'Epilogue',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;line-height:1.5;margin-top:4px}
+.log-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-top:4px}
+.empty-state{text-align:center;padding:50px 24px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:14px;opacity:.4}
+.empty-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;color:var(--text);margin-bottom:8px;opacity:.4}
+.empty-desc{font-size:13px;line-height:1.6;max-width:260px;margin:0 auto;opacity:.5}
+.history-panel{padding:0 16px}
+.snap-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:8px}
+.snap-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.snap-time{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)}
+.snap-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+.del-btn{background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace}
+.del-btn:hover{border-color:var(--red);color:var(--red)}
+.analytics-panel{padding:0 16px}
+.a-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;margin-bottom:8px;color:var(--text)}
+.a-subtitle{font-size:11px;color:var(--muted);margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:14px}
+.stat-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;text-align:center}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;margin-bottom:4px}
+.stat-desc{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;line-height:1.3}
+.a-table{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:14px;overflow:hidden}
+.a-row{padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+.a-row-label{font-size:12px;font-weight:500}
+.a-row-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.a-bar{height:4px;background:var(--dim);border-radius:2px;margin-top:4px}
+.a-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.a-pct{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700}
+.a-games{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-align:right}
+.flip-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.flip-box{background:var(--surface2);border-radius:3px;padding:10px;text-align:center}
+.flip-box-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+.flip-box-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.warn-bar{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,.06);border:1px solid rgba(255,214,0,.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;letter-spacing:.05em}
+.book-section{background:var(--surface);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.book-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.book-stats{display:flex;gap:16px}
+.book-stat{text-align:center}
+.book-stat-num{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.book-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#000;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;padding:10px 20px;border-radius:4px;transition:transform .3s;z-index:999;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="header-top">
     <div class="logo">SHARP<span>MONITOR</span></div>
-    <div class="snapshot-count">SNAPSHOTS: <b id="snapCount">0</b></div>
+    <div class="snap-count">SNAPS: <b id="snapCount">0</b></div>
   </div>
   <div class="tabs">
-    <button class="tab active" onclick="showTab('board')">BOARD</button>
-    <button class="tab" onclick="showTab('history')">HISTORY</button>
-    <button class="tab" onclick="showTab('analytics')">ANALYTICS</button>
+    <button class="tab active" onclick="showTab('board',this)">BOARD</button>
+    <button class="tab" onclick="showTab('history',this)">HISTORY</button>
+    <button class="tab" onclick="showTab('analytics',this)">ANALYTICS</button>
   </div>
 </div>
 
-<!-- PASTE SECTION -->
 <div class="paste-section">
-  <div class="paste-label">
-    <div class="dot"></div>
-    PASTE VSIN DATA
-  </div>
-  <div style="display:flex;gap:6px;margin-bottom:8px">
-    <button id="book-circa" onclick="setBook('Circa')"
-      style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--green);background:var(--green);color:#000;font-weight:700;cursor:pointer;transition:all 0.15s">
-      CIRCA
-    </button>
-    <button id="book-dk" onclick="setBook('DraftKings')"
-      style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.1em;padding:6px 14px;border-radius:3px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;transition:all 0.15s">
-      DRAFTKINGS
-    </button>
-    <span id="book-indicator" style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--green);letter-spacing:0.08em;align-self:center;margin-left:4px">● CIRCA</span>
+  <div class="paste-label"><div class="dot"></div>PASTE VSIN DATA</div>
+  <div class="book-btns">
+    <button class="book-btn" id="btn-circa" onclick="setBook('Circa')" style="border:1px solid var(--green);background:var(--green);color:#000">CIRCA</button>
+    <button class="book-btn" id="btn-dk" onclick="setBook('DraftKings')" style="border:1px solid var(--border2);background:none;color:var(--muted)">DRAFTKINGS</button>
+    <span class="book-indicator" id="bookIndicator" style="color:var(--green)">● CIRCA</span>
   </div>
   <textarea id="pasteInput" placeholder="Run bookmarklet on VSiN, then paste here..."></textarea>
   <div class="paste-actions">
-    <button class="btn btn-secondary" onclick="clearInput()">CLR</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('pasteInput').value=''">CLR</button>
     <button class="btn btn-primary" onclick="processData()">ANALYZE + SAVE SNAPSHOT</button>
   </div>
 </div>
@@ -612,56 +171,34 @@
 <div id="tab-board">
   <div class="board-header">
     <div class="board-title">Signal Board</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="last-update" id="lastUpdate">—</div>
-      <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;flex:none" onclick="resetDay()" title="Clear all snapshots and start fresh">NEW DAY</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)" id="lastUpdate">—</span>
+      <button class="btn-secondary" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 10px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer" onclick="resetDay()">NEW DAY</button>
     </div>
   </div>
-
-  <div id="baselineBar" style="display:none;margin:0 16px 8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+  <div id="baselineBar" class="baseline-bar" style="display:none">
     <span>📌 BASELINE: <span id="baselineTime" style="color:var(--green)">—</span> · <span id="baselineBook" style="color:var(--green)">—</span></span>
-    <button onclick="clearBaseline()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:9px;padding:3px 8px;border-radius:2px;cursor:pointer;font-family:JetBrains Mono,monospace">CLEAR</button>
+    <button class="edit-btn" onclick="clearBaseline()">CLEAR</button>
   </div>
-  <div class="summary-bar" id="summaryBar" style="display:none">
-    <div class="summary-cell">
-      <div class="summary-num" id="sumGames" style="color:var(--text)">0</div>
-      <div class="summary-desc">GAMES</div>
-    </div>
-    <div class="summary-cell">
-      <div class="summary-num" id="sumWhale" style="color:var(--green)">0</div>
-      <div class="summary-desc">WHALE PLAYS</div>
-    </div>
-    <div class="summary-cell">
-      <div class="summary-num" id="sumTrap" style="color:var(--red)">0</div>
-      <div class="summary-desc">PUB TRAPS</div>
-    </div>
-    <div class="summary-cell">
-      <div class="summary-num" id="sumMoved" style="color:var(--yellow)">0</div>
-      <div class="summary-desc">LINE MOVES</div>
-    </div>
+  <div id="summaryBar" class="summary-bar" style="display:none">
+    <div class="sum-cell"><div class="sum-num" id="sumGames" style="color:var(--text)">0</div><div class="sum-desc">GAMES</div></div>
+    <div class="sum-cell"><div class="sum-num" id="sumWhale" style="color:var(--green)">0</div><div class="sum-desc">WHALES</div></div>
+    <div class="sum-cell"><div class="sum-num" id="sumTrap" style="color:var(--red)">0</div><div class="sum-desc">TRAPS</div></div>
+    <div class="sum-cell"><div class="sum-num" id="sumMoved" style="color:var(--yellow)">0</div><div class="sum-desc">MOVED</div></div>
   </div>
-
   <div class="filter-bar">
-    <button class="filter-chip active" onclick="setFilter('all', this)">ALL</button>
-    <button class="filter-chip" onclick="setFilter('whale', this)">🐋 WHALES</button>
-    <button class="filter-chip" onclick="setFilter('trap', this)">🪤 TRAPS</button>
-    <button class="filter-chip" onclick="setFilter('moved', this)">📈 MOVED</button>
-    <button class="filter-chip" onclick="setFilter('spread', this)">SPREAD</button>
-    <button class="filter-chip" onclick="setFilter('total', this)">TOTAL</button>
-    <button class="filter-chip" onclick="setFilter('NBA', this)">NBA</button>
-    <button class="filter-chip" onclick="setFilter('NHL', this)">NHL</button>
-    <button class="filter-chip" onclick="setFilter('MLB', this)">MLB</button>
-    <button class="filter-chip" onclick="setFilter('NCAAM', this)">NCAAM</button>
-    <button class="filter-chip" onclick="setFilter('Circa', this)">CIRCA</button>
-    <button class="filter-chip" onclick="setFilter('DraftKings', this)">DK</button>
+    <button class="chip active" onclick="setFilter('all',this)">ALL</button>
+    <button class="chip" onclick="setFilter('whale',this)">🐋 WHALES</button>
+    <button class="chip" onclick="setFilter('trap',this)">🪤 TRAPS</button>
+    <button class="chip" onclick="setFilter('moved',this)">📈 MOVED</button>
+    <button class="chip" onclick="setFilter('Circa',this)">CIRCA</button>
+    <button class="chip" onclick="setFilter('DraftKings',this)">DK</button>
+    <button class="chip" onclick="setFilter('NBA',this)">NBA</button>
+    <button class="chip" onclick="setFilter('NHL',this)">NHL</button>
+    <button class="chip" onclick="setFilter('MLB',this)">MLB</button>
   </div>
-
   <div class="games-list" id="gamesList">
-    <div class="empty-state">
-      <div class="empty-icon">📋</div>
-      <div class="empty-title">No Data Yet</div>
-      <div class="empty-desc">Run your VSiN bookmarklet, copy the output, and paste it above to get started.</div>
-    </div>
+    <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Paste VSiN data above to start monitoring.</div></div>
   </div>
 </div>
 
@@ -669,1488 +206,844 @@
 <div id="tab-history" style="display:none">
   <div class="board-header">
     <div class="board-title">Snapshots</div>
-    <button class="btn btn-secondary" style="font-size:10px;padding:6px 12px" onclick="clearAllSnapshots()">CLEAR ALL</button>
+    <button class="del-btn" onclick="clearAllSnaps()">CLEAR ALL</button>
   </div>
-  <div class="history-panel" id="historyList">
-    <div class="empty-state">
-      <div class="empty-icon">🕐</div>
-      <div class="empty-title">No Snapshots</div>
-      <div class="empty-desc">Each time you analyze data a snapshot is saved for movement tracking.</div>
-    </div>
-  </div>
+  <div class="history-panel" id="historyList"></div>
 </div>
 
 <!-- ANALYTICS TAB -->
 <div id="tab-analytics" style="display:none">
   <div class="board-header">
-    <div class="board-title">Signal Analytics</div>
-    <button class="btn btn-secondary" style="font-size:9px;padding:5px 10px;flex:none" onclick="clearOutcomes()">CLEAR DATA</button>
+    <div class="board-title">Analytics</div>
+    <button class="del-btn" onclick="clearOutcomes()">CLEAR DATA</button>
   </div>
-
-  <div style="padding:0 16px 16px">
-
-    <!-- Summary stats -->
-    <div id="analyticsContent">
-      <div class="empty-state">
-        <div class="empty-icon">📊</div>
-        <div class="empty-title">No Outcomes Yet</div>
-        <div class="empty-desc">Log game results from the Board tab to start tracking signal accuracy.</div>
-      </div>
-    </div>
-
+  <div class="analytics-panel" id="analyticsContent">
+    <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Log game results from the Board tab to build your analytics.</div></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-  // ─── STATE ───────────────────────────────────────────────
-  let snapshots = JSON.parse(localStorage.getItem('sharpmon_snaps') || '[]');
-  let currentGames = [];
-  let activeFilter = 'all';
-  let expandedCards = new Set();
-  let activeBook = 'Circa';
+// ─── STATE ───────────────────────────────────────────────
+var snaps = JSON.parse(localStorage.getItem('sm_snaps') || '[]');
+var currentGames = [];
+var activeFilter = 'all';
+var expandedCards = {};
+var activeBook = 'Circa';
+var SPORTS = ['NBA','NHL','MLB','NFL','NCAAM'];
 
-  function setBook(book) {
-    activeBook = book;
-    document.getElementById('book-circa').style.background = book === 'Circa' ? 'var(--green)' : 'none';
-    document.getElementById('book-circa').style.color = book === 'Circa' ? '#000' : 'var(--muted)';
-    document.getElementById('book-circa').style.borderColor = book === 'Circa' ? 'var(--green)' : 'var(--border2)';
-    document.getElementById('book-circa').style.fontWeight = book === 'Circa' ? '700' : '400';
-    document.getElementById('book-dk').style.background = book === 'DraftKings' ? 'var(--blue)' : 'none';
-    document.getElementById('book-dk').style.color = book === 'DraftKings' ? '#000' : 'var(--muted)';
-    document.getElementById('book-dk').style.borderColor = book === 'DraftKings' ? 'var(--blue)' : 'var(--border2)';
-    document.getElementById('book-dk').style.fontWeight = book === 'DraftKings' ? '700' : '400';
-    document.getElementById('book-indicator').textContent = book === 'Circa' ? '● CIRCA' : '● DRAFTKINGS';
-    document.getElementById('book-indicator').style.color = book === 'Circa' ? 'var(--green)' : 'var(--blue)';
-  }
+// ─── BOOK SELECTOR ───────────────────────────────────────
+function setBook(book) {
+  activeBook = book;
+  var circa = document.getElementById('btn-circa');
+  var dk = document.getElementById('btn-dk');
+  var ind = document.getElementById('bookIndicator');
+  circa.style.background = book === 'Circa' ? 'var(--green)' : 'none';
+  circa.style.color = book === 'Circa' ? '#000' : 'var(--muted)';
+  circa.style.borderColor = book === 'Circa' ? 'var(--green)' : 'var(--border2)';
+  dk.style.background = book === 'DraftKings' ? 'var(--blue)' : 'none';
+  dk.style.color = book === 'DraftKings' ? '#000' : 'var(--muted)';
+  dk.style.borderColor = book === 'DraftKings' ? 'var(--blue)' : 'var(--border2)';
+  ind.textContent = book === 'Circa' ? '● CIRCA' : '● DRAFTKINGS';
+  ind.style.color = book === 'Circa' ? 'var(--green)' : 'var(--blue)';
+}
 
-  // ─── PARSER ──────────────────────────────────────────────
-  const SPORTS = ['NBA','NHL','MLB','NFL','NCAAM'];
-
-  function stripSport(line) {
-    for (const s of SPORTS) {
-      if (line.startsWith(s + ',')) return { sport: s, line: line.slice(s.length + 1) };
+// ─── STORAGE HELPERS ─────────────────────────────────────
+function getStore(key) { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) { return {}; } }
+function setStore(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function getBaseline() { try { return JSON.parse(localStorage.getItem('sm_baseline')); } catch(e) { return null; } }
+function setBaseline(snap) { localStorage.setItem('sm_baseline', JSON.stringify(snap)); updateBaselineUI(); }
+function clearBaseline() { localStorage.removeItem('sm_baseline'); updateBaselineUI(); toast('BASELINE CLEARED'); }
+function getMovLog(book) { return getStore('sm_mov_' + (book || 'Circa')); }
+function setMovLog(book, log) { setStore('sm_mov_' + (book || 'Circa'), log); }
+function getEstTotals() { return getStore('sm_est'); }
+function saveEstTotal(id, val) { var s = getEstTotals(); if(val) s[id] = {value:parseFloat(val), t:now()}; else delete s[id]; setStore('sm_est', s); }
+function getTipTimes() { return getStore('sm_tip'); }
+function saveTipTime(id, str) {
+  var s = getTipTimes();
+  if (str) {
+    var m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (m) {
+      var h = parseInt(m[1]), mn = parseInt(m[2]), ap = m[3].toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      s[id] = { display: str.trim(), mins: h*60+mn, t: now() };
     }
-    return { sport: null, line };
+  } else { delete s[id]; }
+  setStore('sm_tip', s);
+}
+function getNotes() { return getStore('sm_notes'); }
+function saveNote(id, txt) { var s = getNotes(); if(txt.trim()) s[id] = txt.trim(); else delete s[id]; setStore('sm_notes', s); }
+function getOutcomes() { try { return JSON.parse(localStorage.getItem('sm_outcomes') || '[]'); } catch(e) { return []; } }
+function now() { return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+function mtHour(ts) { return new Date(ts - 7*3600000).getUTCHours(); }
+function mtMins(ts) { return new Date(ts - 7*3600000).getUTCHours()*60 + new Date(ts - 7*3600000).getUTCMinutes(); }
+function hrsBeforeTip(snapTs, tipMins) { return (tipMins - mtMins(snapTs)) / 60; }
+function clearOutcomes() { if(!confirm('Clear all outcome data?')) return; localStorage.removeItem('sm_outcomes'); renderAnalytics(); toast('OUTCOMES CLEARED'); }
+
+// ─── PARSER ──────────────────────────────────────────────
+function stripSport(line) {
+  for (var i=0; i<SPORTS.length; i++) {
+    if (line.startsWith(SPORTS[i]+',')) return { sport:SPORTS[i], line:line.slice(SPORTS[i].length+1) };
   }
+  return { sport:null, line:line };
+}
 
-  function parseVSiN(raw) {
-    const lines = raw.trim().split('\n').map(l => l.trim()).filter(l => l);
-    if (!lines.length) return [];
+function parseVSiN(raw) {
+  var lines = raw.trim().split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if (!lines.length) return [];
+  var start = (lines[0].startsWith('Matchup') || lines[0].startsWith('Sport')) ? 1 : 0;
+  var games = [], i = start, curSport = 'NBA';
 
-    // Remove header
-    let start = 0;
-    if (lines[0].startsWith('Matchup') || lines[0].startsWith('Sport')) start = 1;
-
-    // The actual format per game (8 lines after header):
-    // Line 0: Away Team Name
-    // Line 1: "Home Team Name,-awaySpread\n+homeSpread"  → " Home Team,-1.5\n+1.5"
-    // Line 2: "awayHandle\nhomeHandle"  → "28\n72"
-    // Line 3: "awayBets\nhomeBets"  → "36\n64"
-    // Line 4: "projTotal\nprojTotal"  → "226.5\n226.5"
-    // Line 5: "overHandle\nunderHandle" → "3\n97"
-    // Line 6: "overBets\nunderBets"  → "25\n75"
-    //
-    // Each "cell" in VSiN table is two rows (away/home or over/under)
-    // The bookmarklet joins them as "val1\nval2" separated by commas
-
-    const games = [];
-    let i = start;
-    let currentSport = 'NBA';
-
-    while (i < lines.length) {
-      let rawLine = lines[i];
-      if (!rawLine || rawLine.startsWith('Matchup') || rawLine.startsWith('Sport')) { i++; continue; }
-
-      // Extract sport prefix if present
-      const { sport, line: awayLine } = stripSport(rawLine);
-      if (sport) currentSport = sport;
-      const awayTeam = awayLine;
-
-      // Collect block lines, stripping sport prefix from each
-      const block = [awayTeam];
-      let j = i + 1;
-      while (j < lines.length) {
-        const { sport: ls, line: stripped } = stripSport(lines[j]);
-        const l = stripped;
-        const isTeamName = !l.includes(',') && !/^[\-\+]?[\d\.]+$/.test(l) && l.length > 2 && !/^\d+$/.test(l.split('\n')[0]);
-        if (isTeamName && block.length >= 6) break;
-        block.push(l);
-        j++;
-      }
-
-      const game = parseGameBlock(block);
-      if (game) { game.sport = currentSport; game.book = activeBook; games.push(game); }
-      i = j;
+  while (i < lines.length) {
+    var rs = stripSport(lines[i]);
+    if (!rs.line || rs.line.startsWith('Matchup') || rs.line.startsWith('Sport')) { i++; continue; }
+    if (rs.sport) curSport = rs.sport;
+    var awayTeam = rs.line;
+    var block = [awayTeam];
+    var j = i+1;
+    while (j < lines.length) {
+      var ls = stripSport(lines[j]);
+      var l = ls.line;
+      var isTeam = l.indexOf(',') < 0 && !/^[\-\+]?[\d\.]+$/.test(l) && l.length > 2;
+      if (isTeam && block.length >= 6) break;
+      block.push(l);
+      j++;
     }
-
-    return games;
+    var g = parseBlock(block, curSport, activeBook);
+    if (g) games.push(g);
+    i = j;
   }
+  return games;
+}
 
-  function parseGameBlock(block) {
-    if (block.length < 5) return null;
+function parseBlock(block, sport, book) {
+  if (block.length < 7) return null;
+  try {
+    var awayTeam = block[0].trim();
+    var b1 = block[1].split(',');
+    var homeTeam = b1[0].trim();
+    var awaySpread = parseFloat(b1[1]) || 0;
+    var b2 = block[2].split(',');
+    var homeSpread = parseFloat(b2[0]) || 0;
+    var awayHandle = parseFloat(b2[1]) || 0;
+    var b3 = block[3].split(',');
+    var homeHandle = parseFloat(b3[0]) || 0;
+    var awayBets = parseFloat(b3[1]) || 0;
+    var b4 = block[4].split(',');
+    var homeBets = parseFloat(b4[0]) || 0;
+    var total = parseFloat(b4[1]) || 0;
+    var b5 = block[5].split(',');
+    var overHandle = parseFloat(b5[1]) || 50;
+    var b6 = block[6].split(',');
+    var underHandle = parseFloat(b6[0]) || 50;
+    var overBets = parseFloat(b6[1]) || 50;
+    var underBets = parseFloat(block[7]) || 50;
 
-    try {
-      const awayTeam = block[0].trim();
+    if (!homeTeam || !awayTeam) return null;
 
-      // Block[1]: "Home Team,-1.5"
-      const b1 = (block[1] || '').split(',');
-      const homeTeam = b1[0].trim();
-      const awaySpread = parseFloat(b1[1]) || 0;
+    // Signal detection
+    var awayDom = awayHandle > homeHandle;
+    var sharpH = awayDom ? awayHandle : homeHandle;
+    var sharpB = awayDom ? awayBets : homeBets;
+    var sharpDelta = sharpH - sharpB;
+    var sharpTeam = awayDom ? awayTeam : homeTeam;
+    var pubB = awayDom ? homeBets : awayBets;
+    var pubH = awayDom ? homeHandle : awayHandle;
 
-      // Block[2]: "+1.5,awayHandle"
-      const b2 = (block[2] || '').split(',');
-      const homeSpread = parseFloat(b2[0]) || 0;
-      const awayHandle = parseFloat(b2[1]) || 0;
+    var spreadSig = 'neutral', spreadSide = null;
+    if (sharpH >= 55 && sharpDelta >= 15) { spreadSig = 'whale'; spreadSide = sharpTeam; }
+    else if (pubB >= 65 && pubH < pubB-15) { spreadSig = 'trap'; spreadSide = awayDom ? homeTeam : awayTeam; }
 
-      // Block[3]: "homeHandle,awayBets"
-      const b3 = (block[3] || '').split(',');
-      const homeHandle = parseFloat(b3[0]) || 0;
-      const awayBets = parseFloat(b3[1]) || 0;
+    var overDelta = overHandle - overBets;
+    var underDelta = underHandle - underBets;
+    var totalSig = 'neutral', totalSide = null;
+    if (overHandle >= 60 && overDelta >= 15) { totalSig = 'whale'; totalSide = 'OVER'; }
+    else if (underHandle >= 60 && underDelta >= 15) { totalSig = 'whale'; totalSide = 'UNDER'; }
+    else if (overBets >= 65 && overHandle < overBets-15) { totalSig = 'trap'; totalSide = 'UNDER'; }
+    else if (underBets >= 65 && underHandle < underBets-15) { totalSig = 'trap'; totalSide = 'OVER'; }
 
-      // Block[4]: "homeBets,total"
-      const b4 = (block[4] || '').split(',');
-      const homeBets = parseFloat(b4[0]) || 0;
-      const total = parseFloat(b4[1]) || 0;
+    var id = (awayTeam+'_'+homeTeam).replace(/\s+/g,'_');
 
-      // Block[5]: "total(dup),overHandle"
-      const b5 = (block[5] || '').split(',');
-      const overHandle = parseFloat(b5[1]) || 50;
+    return {
+      id:id, awayTeam:awayTeam, homeTeam:homeTeam, sport:sport, book:book,
+      awaySpread:awaySpread, homeSpread:homeSpread,
+      awayHandle:awayHandle, homeHandle:homeHandle,
+      awayBets:awayBets, homeBets:homeBets,
+      total:total, overHandle:overHandle, underHandle:underHandle,
+      overBets:overBets, underBets:underBets,
+      spreadDelta:sharpDelta, sharpTeam:sharpTeam,
+      overallSig: spreadSig !== 'neutral' ? spreadSig : totalSig,
+      spreadSig:spreadSig, spreadSide:spreadSide,
+      totalSig:totalSig, totalSide:totalSide
+    };
+  } catch(e) { return null; }
+}
 
-      // Block[6]: "underHandle,overBets"
-      const b6 = (block[6] || '').split(',');
-      const underHandle = parseFloat(b6[0]) || 50;
-      const overBets = parseFloat(b6[1]) || 50;
+// ─── SIGNAL SCORE ────────────────────────────────────────
+function signalScore(g, movLog) {
+  var s = 0;
+  var delta = Math.abs(g.spreadDelta || 0);
+  if (delta >= 40) s += 3; else if (delta >= 25) s += 2; else if (delta >= 15) s += 1;
+  var td = Math.abs((g.overHandle||0)-(g.overBets||0));
+  if (td >= 30) s += 2; else if (td >= 15) s += 1;
+  var log = movLog[g.id] || [];
+  var bookLog = log.filter(function(m){return !m.book || m.book === g.book;});
+  var hasMov = bookLog.some(function(m){return m.field==='SPREAD';});
+  if (hasMov) s += 2;
+  if (bookLog.length >= 4) s += 2; else if (bookLog.length >= 2) s += 1;
+  return Math.min(s, 10);
+}
 
-      // Block[7]: "underBets"
-      const underBets = parseFloat(block[7]) || 50;
+function scoreClass(s) { return s>=8?'badge-score-strong':s>=5?'badge-score-mod':'badge-score-weak'; }
+function scoreLabel(s) { return s>=8?'STRONG':s>=5?'MODERATE':'WEAK'; }
 
-      if (!homeTeam || !awayTeam) return null;
-
-      // Signal detection
-      const spreadDelta = awayHandle - awayBets;
-      const homeDelta = homeHandle - homeBets;
-      const totalDelta = overHandle - overBets;
-
-      let spreadSignal = 'neutral';
-      let spreadSide = null;
-
-      // Use whichever side has dominant handle
-      const awayDominant = awayHandle > homeHandle;
-      const sharpHandle = awayDominant ? awayHandle : homeHandle;
-      const sharpBets = awayDominant ? awayBets : homeBets;
-      const sharpDelta = sharpHandle - sharpBets;
-      const sharpTeam = awayDominant ? awayTeam : homeTeam;
-      const fadeTeam = awayDominant ? homeTeam : awayTeam;
-      const publicBets = awayDominant ? awayBets : homeBets;
-      const publicHandle = awayDominant ? awayHandle : homeHandle;
-
-      // Whale: sharp handle significantly exceeds bets by at least 15 points
-      if (sharpHandle >= 55 && sharpDelta >= 15) {
-        spreadSignal = 'whale'; spreadSide = sharpTeam;
-      }
-      // Public trap: heavy tickets on one side, handle clearly lower
-      else if (publicBets >= 65 && publicHandle < publicBets - 15) {
-        spreadSignal = 'trap'; spreadSide = fadeTeam;
-      }
-
-      let totalSignal = 'neutral';
-      let totalSide = null;
-      const underDelta = underHandle - underBets;
-
-      if (overHandle >= 60 && totalDelta >= 15) {
-        totalSignal = 'whale'; totalSide = 'OVER';
-      } else if (underHandle >= 60 && underDelta >= 15) {
-        totalSignal = 'whale'; totalSide = 'UNDER';
-      } else if (overBets >= 65 && overHandle < overBets - 15) {
-        totalSignal = 'trap'; totalSide = 'UNDER';
-      } else if (underBets >= 65 && underHandle < underBets - 15) {
-        totalSignal = 'trap'; totalSide = 'OVER';
-      }
-
-      // Always store delta from sharp side perspective (positive = sharp money confirmed)
-      const sharpSpreadDelta = awayDominant ? spreadDelta : (homeHandle - homeBets);
-
-      return {
-        id: `${awayTeam}_${homeTeam}`.replace(/\s+/g, '_'),
-        awayTeam, homeTeam,
-        sport: 'NBA', // overwritten by caller
-        awaySpread, homeSpread,
-        awayHandle, homeHandle,
-        awayBets, homeBets,
-        total,
-        overHandle, underHandle,
-        overBets, underBets,
-        spreadDelta,
-        sharpSpreadDelta,
-        totalDelta,
-        spreadSignal, spreadSide,
-        totalSignal, totalSide,
-        overallSignal: spreadSignal !== 'neutral' ? spreadSignal : totalSignal
-      };
-    } catch(e) {
-      return null;
-    }
+// ─── MOVEMENT DETECTION ──────────────────────────────────
+function detectMovements(games) {
+  if (!games.length) return {};
+  var book = games[0].book || 'Circa';
+  var baseline = getBaseline();
+  var baselineBook = baseline && baseline.games && baseline.games.length ? (baseline.games[0].book || 'Circa') : null;
+  var compareSnap = null;
+  if (baseline && baselineBook === book) {
+    compareSnap = baseline;
+  } else {
+    var sameBook = snaps.filter(function(s){ return s.games && s.games.length && (s.games[0].book||'Circa')===book; });
+    if (sameBook.length >= 2) compareSnap = sameBook[sameBook.length-2];
+    else if (sameBook.length === 1) compareSnap = sameBook[0];
   }
+  if (!compareSnap) return {};
+  var prev = compareSnap.games;
+  var movs = {};
+  games.forEach(function(g) {
+    var pg = null;
+    for (var k=0; k<prev.length; k++) { if(prev[k].id===g.id){pg=prev[k];break;} }
+    if (!pg) return;
+    var ms = [];
+    if (Math.abs(g.awaySpread - pg.awaySpread) >= 0.5) ms.push({field:'SPREAD',from:pg.awaySpread,to:g.awaySpread,dir:g.awaySpread>pg.awaySpread?'up':'dn',team:g.awayTeam,book:book});
+    if (Math.abs(g.total - pg.total) >= 0.5) ms.push({field:'TOTAL',from:pg.total,to:g.total,dir:g.total>pg.total?'up':'dn',book:book});
+    if (Math.abs(g.awayHandle - pg.awayHandle) >= 15) ms.push({field:'HANDLE',from:pg.awayHandle,to:g.awayHandle,dir:g.awayHandle>pg.awayHandle?'up':'dn',team:g.awayTeam,book:book});
+    if (ms.length) movs[g.id] = ms;
+  });
+  return movs;
+}
 
-  // ─── MOVEMENT DETECTION ──────────────────────────────────
-  function detectMovements(games) {
-    if (snapshots.length === 0) return {};
+// ─── PROCESS DATA ────────────────────────────────────────
+function processData() {
+  var raw = document.getElementById('pasteInput').value.trim();
+  if (!raw) { toast('PASTE DATA FIRST'); return; }
+  var games = parseVSiN(raw);
+  if (!games.length) { toast('PARSE FAILED — CHECK FORMAT'); return; }
 
-    // Only compare against snapshots from the same book
-    const currentBook = games.length > 0 ? (games[0].book || 'Circa') : 'Circa';
+  var movements = detectMovements(games);
 
-    // Use baseline if it matches the current book, otherwise find most recent same-book snapshot
-    const baseline = getBaseline();
-    const baselineBook = baseline && baseline.games.length > 0 ? (baseline.games[0].book || 'Circa') : null;
-
-    let compareSnap = null;
-    let isBaseline = false;
-
-    if (baseline && baselineBook === currentBook) {
-      compareSnap = baseline;
-      isBaseline = true;
-    } else {
-      // Find most recent snapshot of the same book (excluding current)
-      const sameBookSnaps = snapshots.filter(s => {
-        const book = s.games && s.games.length > 0 ? (s.games[0].book || 'Circa') : 'Circa';
-        return book === currentBook;
-      });
-      if (sameBookSnaps.length >= 2) {
-        compareSnap = sameBookSnaps[sameBookSnaps.length - 2];
-      } else if (sameBookSnaps.length === 1) {
-        compareSnap = sameBookSnaps[0];
-      }
-    }
-
-    if (!compareSnap) return {};
-
-    const prev = compareSnap.games;
-    const movements = {};
-
-    for (const game of games) {
-      const prevGame = prev.find(p => p.id === game.id);
-      if (!prevGame) continue;
-
-      const moves = [];
-
-      if (Math.abs(game.awaySpread - prevGame.awaySpread) >= 0.5) {
-        moves.push({
-          field: 'SPREAD',
-          from: prevGame.awaySpread,
-          to: game.awaySpread,
-          direction: game.awaySpread > prevGame.awaySpread ? 'up' : 'down',
-          team: game.awayTeam,
-          fromBaseline: isBaseline
-        });
-      }
-
-      if (Math.abs(game.total - prevGame.total) >= 0.5) {
-        moves.push({
-          field: 'TOTAL',
-          from: prevGame.total,
-          to: game.total,
-          direction: game.total > prevGame.total ? 'up' : 'down',
-          fromBaseline: isBaseline
-        });
-      }
-
-      if (Math.abs(game.awayHandle - prevGame.awayHandle) >= 15) {
-        moves.push({
-          field: 'HANDLE',
-          from: prevGame.awayHandle,
-          to: game.awayHandle,
-          direction: game.awayHandle > prevGame.awayHandle ? 'up' : 'down',
-          team: game.awayTeam,
-          fromBaseline: isBaseline
-        });
-      }
-
-      if (moves.length) movements[game.id] = moves;
-    }
-
-    return movements;
-  }
-
-  function getBaseline() {
-    const stored = localStorage.getItem('sharpmon_baseline');
-    if (!stored) return null;
-    try { return JSON.parse(stored); } catch(e) { return null; }
-  }
-
-  function setBaseline(snap) {
-    localStorage.setItem('sharpmon_baseline', JSON.stringify(snap));
-    updateBaselineUI();
-  }
-
-  function clearBaseline() {
-    localStorage.removeItem('sharpmon_baseline');
-    updateBaselineUI();
-    showToast('BASELINE CLEARED');
-  }
-
-  function updateBaselineUI() {
-    const baseline = getBaseline();
-    const bar = document.getElementById('baselineBar');
-    const timeEl = document.getElementById('baselineTime');
-    const bookEl = document.getElementById('baselineBook');
-    if (baseline) {
-      bar.style.display = 'flex';
-      timeEl.textContent = baseline.time;
-      const bBook = baseline.games && baseline.games.length > 0 ? (baseline.games[0].book || 'Circa') : 'Circa';
-      if (bookEl) {
-        bookEl.textContent = bBook;
-        bookEl.style.color = bBook === 'DraftKings' ? 'var(--blue)' : 'var(--green)';
-      }
-    } else {
-      bar.style.display = 'none';
-    }
-  }
-
-  function resetDay() {
-    if (!confirm('Reset for new day? This clears all snapshots and the baseline.')) return;
-    snapshots = [];
-    localStorage.removeItem('sharpmon_snaps');
-    localStorage.removeItem('sharpmon_baseline');
-    currentGames = [];
-    document.getElementById('snapCount').textContent = 0;
-    document.getElementById('lastUpdate').textContent = '—';
-    document.getElementById('summaryBar').style.display = 'none';
-    document.getElementById('baselineBar').style.display = 'none';
-    const list = document.getElementById('gamesList');
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Run your VSiN bookmarklet, copy the output, and paste it above to get started.</div></div>`;
-    renderHistory();
-    localStorage.removeItem('sharpmon_movelog');
-    localStorage.removeItem('sharpmon_notes');
-    localStorage.removeItem('sharpmon_esttotals');
-    showToast('NEW DAY — ALL DATA CLEARED');
-  }
-
-  function getMovementLog() {
-    try { return JSON.parse(localStorage.getItem('sharpmon_movelog') || '{}'); }
-    catch(e) { return {}; }
-  }
-
-  function getNotes() {
-    try { return JSON.parse(localStorage.getItem('sharpmon_notes') || '{}'); }
-    catch(e) { return {}; }
-  }
-
-  function getEstTotals() {
-    try { return JSON.parse(localStorage.getItem('sharpmon_esttotals') || '{}'); }
-    catch(e) { return {}; }
-  }
-
-  function saveEstTotal(gameId, value) {
-    const store = getEstTotals();
-    if (value) store[gameId] = { value: parseFloat(value), lockedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) };
-    else delete store[gameId];
-    localStorage.setItem('sharpmon_esttotals', JSON.stringify(store));
-  }
-
-  function saveNote(gameId, text) {
-    const notes = getNotes();
-    if (text.trim()) notes[gameId] = text.trim();
-    else delete notes[gameId];
-    localStorage.setItem('sharpmon_notes', JSON.stringify(notes));
-  }
-
-  // ─── OUTCOMES ────────────────────────────────────────────
-  function getOutcomes() {
-    try { return JSON.parse(localStorage.getItem('sharpmon_outcomes') || '[]'); }
-    catch(e) { return []; }
-  }
-
-  function logOutcome(gameId, awayTeam, homeTeam, sport, awayScore, homeScore, signalData) {
-    const outcomes = getOutcomes();
-    // Remove existing entry for this game if re-logging
-    const filtered = outcomes.filter(o => o.gameId !== gameId);
-
-    const spreadCorrect = signalData.spreadSide ? determineSpreadResult(signalData, awayScore, homeScore) : null;
-    const totalCorrect = signalData.totalSide ? determineTotalResult(signalData, awayScore, homeScore) : null;
-
-    filtered.push({
-      gameId, awayTeam, homeTeam, sport,
-      awayScore: parseInt(awayScore),
-      homeScore: parseInt(homeScore),
-      date: new Date().toLocaleDateString(),
-      hourMT: new Date(Date.now() - 7*3600000).getUTCHours(),
-      ...signalData,
-      spreadCorrect,
-      totalCorrect,
-      loggedAt: Date.now()
+  // Log movements to book-specific store
+  if (Object.keys(movements).length) {
+    var log = getMovLog(activeBook);
+    Object.keys(movements).forEach(function(id) {
+      if (!log[id]) log[id] = [];
+      movements[id].forEach(function(m) { log[id].push(Object.assign({},m,{time:now(),ts:Date.now()})); });
     });
-
-    localStorage.setItem('sharpmon_outcomes', JSON.stringify(filtered));
-    showToast('✓ RESULT LOGGED');
-    renderAnalytics();
+    setMovLog(activeBook, log);
   }
 
-  function determineSpreadResult(sig, awayScore, homeScore) {
-    if (!sig.spreadSide || !sig.awaySpread) return null;
-    const away = parseInt(awayScore);
-    const home = parseInt(homeScore);
-    // Figure out if sharp side covered
-    const sharpIsAway = sig.spreadSide === sig.awayTeam;
-    if (sharpIsAway) {
-      return (away + sig.awaySpread) > home;
-    } else {
-      return (home + Math.abs(sig.awaySpread)) > away;
-    }
+  var snap = { id:Date.now(), time:now(), ts:Date.now(), games:games, gameCount:games.length, book:activeBook };
+
+  // Auto-set baseline for this book if first snap of book today
+  var sameBook = snaps.filter(function(s){return (s.games&&s.games.length&&(s.games[0].book||'Circa'))===activeBook;});
+  var bl = getBaseline();
+  var blBook = bl && bl.games && bl.games.length ? (bl.games[0].book||'Circa') : null;
+  if (sameBook.length === 0 && blBook !== activeBook) { setBaseline(snap); toast('📌 '+activeBook.toUpperCase()+' BASELINE SET — '+snap.time); }
+
+  snaps.push(snap);
+  if (snaps.length > 20) snaps.shift();
+  setStore('sm_snaps', snaps);
+
+  currentGames = games;
+  document.getElementById('snapCount').textContent = snaps.length;
+  document.getElementById('lastUpdate').textContent = snap.time;
+  document.getElementById('pasteInput').value = '';
+
+  renderBoard(games, movements);
+  toast('✓ '+games.length+' GAMES PARSED');
+}
+
+// ─── RENDER BOARD ────────────────────────────────────────
+function renderBoard(games, movements) {
+  var list = document.getElementById('gamesList');
+  var sumBar = document.getElementById('summaryBar');
+  movements = movements || {};
+
+  if (!games.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Paste VSiN data above to start monitoring.</div></div>';
+    sumBar.style.display = 'none';
+    return;
   }
 
-  function determineTotalResult(sig, awayScore, homeScore) {
-    if (!sig.totalSide || !sig.total) return null;
-    const combined = parseInt(awayScore) + parseInt(homeScore);
-    if (sig.totalSide === 'OVER') return combined > sig.total;
-    if (sig.totalSide === 'UNDER') return combined < sig.total;
-    return null;
-  }
-
-  function clearOutcomes() {
-    if (!confirm('Clear all outcome data?')) return;
-    localStorage.removeItem('sharpmon_outcomes');
-    renderAnalytics();
-    showToast('OUTCOMES CLEARED');
-  }
-
-  // ─── EST TOTAL ANALYTICS HELPER ─────────────────────────
-  function renderEstTotalAnalytics(outcomes, allReadings, pct, bar) {
-    const estOutcomes = outcomes.filter(o => o.estTotal && o.estGap !== null);
-    if (estOutcomes.length === 0) return '';
-
-    const overGap = estOutcomes.filter(o => o.estGap >= 1.5);
-    const underGap = estOutcomes.filter(o => o.estGap <= -1.5);
-    const neutral = estOutcomes.filter(o => Math.abs(o.estGap) < 1.5);
-
-    function wasOver(o) { return (o.awayScore + o.homeScore) > o.marketTotalAtBet; }
-    function wasUnder(o) { return (o.awayScore + o.homeScore) < o.marketTotalAtBet; }
-
-    const overAcc = overGap.map(o => wasOver(o));
-    const underAcc = underGap.map(o => wasUnder(o));
-
-    // By gap size
-    const gap1 = estOutcomes.filter(o => Math.abs(o.estGap) >= 1.5 && Math.abs(o.estGap) < 3);
-    const gap2 = estOutcomes.filter(o => Math.abs(o.estGap) >= 3 && Math.abs(o.estGap) < 5);
-    const gap3 = estOutcomes.filter(o => Math.abs(o.estGap) >= 5);
-    function gapAcc(arr) { return arr.map(o => o.estGap > 0 ? wasOver(o) : wasUnder(o)); }
-
-    // By sport
-    const sports = {};
-    estOutcomes.forEach(o => {
-      if (!sports[o.sport]) sports[o.sport] = [];
-      sports[o.sport].push(o);
+  // Attach movement info to games
+  games.forEach(function(g) {
+    var ms = movements[g.id] || [];
+    g.spreadMove = null; g.totalMove = null;
+    ms.forEach(function(m) {
+      if (m.field==='SPREAD' && Math.abs(m.to-m.from)>=0.5) g.spreadMove = parseFloat((m.to-m.from).toFixed(1));
+      if (m.field==='TOTAL' && Math.abs(m.to-m.from)>=0.5) g.totalMove = parseFloat((m.to-m.from).toFixed(1));
     });
+  });
 
-    let html = '<div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">VSiN Estimated Total</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">' + estOutcomes.length + ' games logged</div>';
+  // Summary
+  sumBar.style.display = 'grid';
+  var whales = games.filter(function(g){return g.overallSig==='whale';}).length;
+  var traps = games.filter(function(g){return g.overallSig==='trap';}).length;
+  var moved = Object.keys(movements).length;
+  document.getElementById('sumGames').textContent = games.length;
+  document.getElementById('sumWhale').textContent = whales;
+  document.getElementById('sumTrap').textContent = traps;
+  document.getElementById('sumMoved').textContent = moved;
 
-    // Direction accuracy
-    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
+  // Filter
+  var filtered = games.slice();
+  if (activeFilter === 'whale') filtered = games.filter(function(g){return g.overallSig==='whale';});
+  else if (activeFilter === 'trap') filtered = games.filter(function(g){return g.overallSig==='trap';});
+  else if (activeFilter === 'moved') filtered = games.filter(function(g){return movements[g.id];});
+  else if (activeFilter === 'Circa' || activeFilter === 'DraftKings') filtered = games.filter(function(g){return (g.book||'Circa')===activeFilter;});
+  else if (SPORTS.indexOf(activeFilter) >= 0) filtered = games.filter(function(g){return g.sport===activeFilter;});
 
-    if (overGap.length > 0) {
-      html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
-      html += '<div><div style="font-size:12px;font-weight:500">EST &gt; Market → Lean OVER</div>';
-      html += '<div style="font-size:11px;color:var(--muted)">' + overGap.length + ' games, est was 1.5+ above line</div>';
-      html += bar(overAcc) + '</div>';
-      const op = pct(overAcc);
-      const oc = overAcc.filter(Boolean).length / overAcc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
-      html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:' + oc + '">' + op + '</div>';
-      html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + overGap.length + ' games</div></div></div>';
-    }
+  // Sort: signals first, then delta
+  filtered.sort(function(a,b) {
+    var order = {whale:0,trap:1,neutral:2};
+    var ao = order[a.overallSig], bo = order[b.overallSig];
+    if (ao !== bo) return ao-bo;
+    return Math.abs(b.spreadDelta)-Math.abs(a.spreadDelta);
+  });
 
-    if (underGap.length > 0) {
-      html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
-      html += '<div><div style="font-size:12px;font-weight:500">EST &lt; Market → Lean UNDER</div>';
-      html += '<div style="font-size:11px;color:var(--muted)">' + underGap.length + ' games, est was 1.5+ below line</div>';
-      html += bar(underAcc) + '</div>';
-      const up = pct(underAcc);
-      const uc = underAcc.filter(Boolean).length / underAcc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
-      html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:' + uc + '">' + up + '</div>';
-      html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + underGap.length + ' games</div></div></div>';
-    }
+  list.innerHTML = filtered.map(function(g){ return renderCard(g, movements[g.id]||[]); }).join('');
+}
 
-    html += '<div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
-    html += '<div style="font-size:12px;font-weight:500">Neutral (within 1.5 pts)</div>';
-    html += '<div style="font-family:JetBrains Mono,monospace;font-size:13px;color:var(--muted)">' + neutral.length + ' games</div></div>';
-    html += '</div>';
+function renderCard(g, moves) {
+  var isExp = expandedCards[g.id];
+  var movLog = getMovLog(g.book||'Circa');
+  var bookLog = (movLog[g.id]||[]).filter(function(m){return !m.book||m.book===(g.book||'Circa');});
+  var score = (g.spreadSig!=='neutral'||g.totalSig!=='neutral') ? signalScore(g, movLog) : 0;
 
-    // Gap size buckets
-    const gapRows = [[gap1, '1.5 - 2.9 pts'], [gap2, '3.0 - 4.9 pts'], [gap3, '5.0+ pts']].filter(([arr]) => arr.length > 0);
-    if (gapRows.length > 0) {
-      html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;margin-top:4px">GAP SIZE ACCURACY</div>';
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
-      gapRows.forEach(([arr, label]) => {
-        const acc = gapAcc(arr);
-        const p = pct(acc);
-        const c = acc.filter(Boolean).length / acc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
-        html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">';
-        html += '<div><div style="font-size:12px;font-weight:500">Gap ' + label + '</div>' + bar(acc) + '</div>';
-        html += '<div style="text-align:right"><div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:' + c + '">' + p + '</div>';
-        html += '<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">' + arr.length + ' games</div></div></div>';
-      });
-      html += '</div>';
-    }
+  var mtH = mtHour(Date.now());
+  var goodHours = [6,7,9,12,13,19,21];
+  var inGood = goodHours.indexOf(mtH)>=0;
+  var winColor = inGood?'var(--green)':mtH>=16&&mtH<=19?'var(--yellow)':'var(--muted)';
+  var winLabel = inGood?'✓ GOOD WINDOW':mtH>=16&&mtH<=19?'⚠ MARGINAL':'— OFF WINDOW';
 
-    // By sport
-    if (Object.keys(sports).length > 1) {
-      html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px">BY SPORT</div>';
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">';
-      Object.entries(sports).forEach(([sport, arr]) => {
-        const acc = arr.map(o => o.estGap > 0 ? wasOver(o) : wasUnder(o));
-        const p = pct(acc);
-        const c = acc.filter(Boolean).length / acc.length >= 0.55 ? 'var(--green)' : 'var(--red)';
-        html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">';
-        html += '<div style="font-size:12px;font-weight:500">' + sport + '</div>';
-        html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);text-align:center">GAMES<br><span style="font-size:12px;color:var(--text)">' + arr.length + '</span></div>';
-        html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted);text-align:center">ACCURACY<br><span style="font-size:14px;font-weight:700;color:' + c + '">' + p + '</span></div>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
+  var cardClass = g.overallSig==='whale'?'card-left-whale':g.overallSig==='trap'?'card-left-trap':moves.length?'card-left-moved':'';
+  var spreadBadge = g.spreadSig==='whale'?'<span class="badge badge-whale">🐋 WHALE</span>':g.spreadSig==='trap'?'<span class="badge badge-trap">🪤 TRAP</span>':'<span class="badge badge-neutral">SPREAD</span>';
+  var totalBadge = g.totalSig!=='neutral'?'<span class="badge badge-'+(g.totalSig==='whale'?'whale':'trap')+'">'+( g.totalSig==='whale'?'🐋':'🪤')+' '+g.totalSide+'</span>':'';
+  var movBadge = moves.length?'<span class="badge badge-moved">📈 MOVED</span>':'';
+  var scoreBadge = score>0?'<span class="badge '+scoreClass(score)+'">'+score+'/10 '+scoreLabel(score)+'</span>':'';
 
-    return html;
+  var awayN = g.awayTeam.split(' ').pop();
+  var homeN = g.homeTeam.split(' ').pop();
+  var bookColor = (g.book||'Circa')==='DraftKings'?'var(--blue)':'var(--green)';
+
+  function hPct(v) {
+    return '<span class="'+(v>=60?'h-hot':'h-cold')+'">'+v+'%</span>';
   }
 
-  // ─── ANALYTICS RENDERER ──────────────────────────────────
-  function getHourBucket(h) {
-    if (h >= 5 && h < 9) return 'Early AM (5-9AM)';
-    if (h >= 9 && h < 12) return 'Mid Morning (9-12PM)';
-    if (h >= 12 && h < 16) return 'Afternoon (12-4PM)';
-    if (h >= 16 && h < 20) return 'Evening (4-8PM)';
+  // Move tags
+  var sTag = g.spreadMove ? '<span class="move-tag" style="color:'+(g.spreadMove>0?'var(--green)':'var(--red)')+'">SPRD '+(g.spreadMove>0?'↑':'↓')+Math.abs(g.spreadMove)+'</span>' : '';
+  var tTag = g.totalMove ? '<span class="move-tag" style="color:'+(g.totalMove>0?'var(--green)':'var(--red)')+'">O/U '+(g.totalMove>0?'↑':'↓')+Math.abs(g.totalMove)+'</span>' : '';
+
+  // Est total
+  var estTotals = getEstTotals();
+  var est = estTotals[g.id];
+  var estHTML = '';
+  if (est) {
+    var gap = est.value - g.total;
+    var lean = gap >= 1.5 ? '<span style="color:var(--green)">↑ EST +'+(gap.toFixed(1))+' (LEAN OVER)</span>' : gap <= -1.5 ? '<span style="color:var(--red)">↓ EST '+(gap.toFixed(1))+' (LEAN UNDER)</span>' : '<span style="color:var(--muted)">= NEUTRAL</span>';
+    estHTML = '<div class="card-section"><div class="section-title"><span>📊 VSiN EST TOTAL</span><span style="font-size:9px;color:var(--green)">🔒 '+est.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--green)">'+est.value+'</span><span style="font-size:11px;color:var(--muted)">vs market <b style="color:var(--text)">'+g.total+'</b> '+lean+'</span><button class="edit-btn" onclick="saveEstTotal(\''+g.id+'\',null);rerenderCard(\''+g.id+'\')">EDIT</button></div></div>';
+  } else {
+    estHTML = '<div class="card-section"><div class="section-title">📊 VSiN EST TOTAL</div><div class="input-row"><input class="card-input" id="est-'+g.id+'" type="number" step="0.5" placeholder="Enter estimated total..."><button class="lock-btn green-btn" onclick="doLockEst(\''+g.id+'\')">LOCK</button></div></div>';
+  }
+
+  // Tip time
+  var tipTimes = getTipTimes();
+  var tip = tipTimes[g.id];
+  var tipHTML = '';
+  if (tip) {
+    tipHTML = '<div class="card-section"><div class="section-title"><span>⏰ TIP TIME (MT)</span><span style="font-size:9px;color:var(--blue)">🔒 '+tip.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--blue)">'+tip.display+'</span><button class="edit-btn" onclick="saveTipTime(\''+g.id+'\',null);rerenderCard(\''+g.id+'\')">EDIT</button></div></div>';
+  } else {
+    tipHTML = '<div class="card-section"><div class="section-title">⏰ TIP TIME (MT)</div><div class="input-row"><input class="card-input" id="tip-'+g.id+'" type="text" placeholder="e.g. 7:30 PM"><button class="lock-btn" onclick="doLockTip(\''+g.id+'\')">LOCK</button></div></div>';
+  }
+
+  // Notes
+  var notes = getNotes();
+  var noteVal = notes[g.id] || '';
+  var notesHTML = '<div class="card-section"><div class="section-title">📝 NOTES</div><textarea class="notes-ta" rows="2" placeholder="Injury news, reason for bet/pass..." onchange="saveNote(\''+g.id+'\',this.value)">'+noteVal+'</textarea></div>';
+
+  // Movement log
+  var movHTML = '';
+  if (bookLog.length || moves.length) {
+    var entries = bookLog.map(function(m){
+      return '<div class="mov-item"><span class="mov-time">'+m.time+'</span><span class="mov-field">'+m.field+'</span><span class="mov-from">'+m.from+(m.field==='HANDLE'?'%':'')+'</span><span class="'+(m.dir==='up'?'mov-up':'mov-dn')+'">→</span><span class="mov-to">'+m.to+(m.field==='HANDLE'?'%':'')+'</span></div>';
+    }).join('');
+    if (moves.length) {
+      entries += moves.map(function(m){
+        return '<div class="mov-item" style="background:rgba(0,255,135,.04);border-radius:2px;padding:2px 4px"><span class="mov-time" style="color:var(--green)">NOW</span><span class="mov-field">'+m.field+'</span><span class="mov-from">'+m.from+'</span><span class="'+(m.dir==='up'?'mov-up':'mov-dn')+'">→</span><span class="mov-to">'+m.to+'</span></div>';
+      }).join('');
+    }
+    movHTML = '<div class="card-section"><div class="section-title">📋 MOVEMENT LOG ('+bookLog.length+' entries)</div>'+entries+'</div>';
+  }
+
+  // Log result
+  var logHTML = '<div class="card-section"><div class="section-title">🏀 LOG RESULT</div><div class="log-row"><input class="card-input" id="la-'+g.id+'" type="number" placeholder="'+awayN+' score"><input class="card-input" id="lh-'+g.id+'" type="number" placeholder="'+homeN+' score"><button class="lock-btn green-btn" onclick="doLog(\''+g.id+'\')">LOG</button></div></div>';
+
+  // Spread delta display
+  var sdColor = g.spreadSig==='whale'?'delta-pos':g.spreadSig==='trap'?'delta-neg':'delta-neu';
+  var sdVal = g.spreadSig!=='neutral'?'+'+Math.abs(g.spreadDelta).toFixed(0)+'%':(g.spreadDelta>0?'+':'')+g.spreadDelta.toFixed(0)+'%';
+  var tdVal = (g.overHandle-g.overBets);
+  var tdColor = g.totalSig==='whale'?'delta-pos':g.totalSig==='trap'?'delta-neg':'delta-neu';
+
+  // Line values with movement
+  var sprdLine = g.awaySpread + (g.spreadMove ? ' <span style="font-size:10px;color:'+(g.spreadMove>0?'var(--green)':'var(--red)')+'">('+(g.spreadMove>0?'↑':'↓')+Math.abs(g.spreadMove)+')</span>' : '');
+  var ouLine = g.total + (g.totalMove ? ' <span style="font-size:10px;color:'+(g.totalMove>0?'var(--green)':'var(--red)')+'">('+(g.totalMove>0?'↑':'↓')+Math.abs(g.totalMove)+')</span>' : '');
+
+  var body = isExp ? (
+    '<div class="splits-grid">'
+      +'<div class="split-cell"><div class="split-label">SPREAD HDL</div>'
+        +'<div class="split-row"><span class="split-team">'+awayN+'</span><span>'+hPct(g.awayHandle)+'</span><span class="h-bets">'+g.awayBets+'%B</span></div>'
+        +'<div class="split-row"><span class="split-team">'+homeN+'</span><span>'+hPct(g.homeHandle)+'</span><span class="h-bets">'+g.homeBets+'%B</span></div></div>'
+      +'<div class="split-cell"><div class="split-label">TOTAL HDL</div>'
+        +'<div class="split-row"><span class="split-team">OVER</span><span>'+hPct(g.overHandle)+'</span><span class="h-bets">'+g.overBets+'%B</span></div>'
+        +'<div class="split-row"><span class="split-team">UNDER</span><span>'+hPct(g.underHandle)+'</span><span class="h-bets">'+g.underBets+'%B</span></div></div>'
+      +'<div class="split-cell"><div class="split-label">LINE</div>'
+        +'<div class="split-row"><span class="split-team">SPRD</span><span style="font-family:JetBrains Mono,monospace;font-size:11px">'+sprdLine+'</span></div>'
+        +'<div class="split-row"><span class="split-team">O/U</span><span style="font-family:JetBrains Mono,monospace;font-size:11px">'+ouLine+'</span></div></div>'
+    +'</div>'
+    +'<div class="delta-row"><span class="delta-label">SPREAD DELTA · '+g.sharpTeam.split(' ').pop()+' HDL-BETS</span><span class="'+sdColor+'">'+sdVal+'</span></div>'
+    +'<div class="delta-row" style="border-top:none"><span class="delta-label">TOTAL DELTA (OVER HDL-BETS)</span><span class="'+tdColor+'">'+(tdVal>0?'+':'')+tdVal.toFixed(0)+'%</span></div>'
+    +'<div class="delta-row" style="border-top:none"><span class="delta-label">BETTING WINDOW</span><span style="font-family:JetBrains Mono,monospace;font-size:11px;color:'+winColor+'">'+winLabel+'</span></div>'
+    +estHTML+tipHTML+notesHTML+logHTML+movHTML
+  ) : '';
+
+  return '<div class="game-card '+cardClass+'" id="card-'+g.id+'">'
+    +'<div class="card-header" onclick="toggleCard(\''+g.id+'\')">'
+      +'<div>'
+        +'<div style="font-size:13px;font-weight:500"><span style="font-family:JetBrains Mono,monospace;font-size:9px;color:'+bookColor+';margin-right:4px">'+( g.book||'Circa')+'</span><span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);margin-right:4px">'+g.sport+'</span>'+awayN+' <span style="color:var(--muted);font-size:10px">@</span> '+homeN+'</div>'
+        +'<div class="matchup-line">'+spreadBadge+totalBadge+movBadge+scoreBadge+sTag+tTag+'</div>'
+      +'</div>'
+      +'<span style="color:var(--muted);font-size:14px">'+(isExp?'▲':'▼')+'</span>'
+    +'</div>'
+    +(isExp?'<div class="card-body-shown">'+body+'</div>':'')
+    +'<div class="expand-toggle" onclick="toggleCard(\''+g.id+'\')"><span>'+(isExp?'COLLAPSE ▲':'EXPAND ▼')+'</span></div>'
+    +'</div>';
+}
+
+function rerenderCard(id) {
+  var g = currentGames.filter(function(x){return x.id===id;})[0];
+  if (!g) return;
+  var el = document.getElementById('card-'+id);
+  if (!el) return;
+  var movs = detectMovements(currentGames);
+  el.outerHTML = renderCard(g, movs[id]||[]);
+}
+
+function toggleCard(id) {
+  expandedCards[id] = !expandedCards[id];
+  rerenderCard(id);
+}
+
+// ─── LOCK HANDLERS ───────────────────────────────────────
+function doLockEst(id) {
+  var inp = document.getElementById('est-'+id);
+  if (!inp || !inp.value) { toast('ENTER EST TOTAL'); return; }
+  saveEstTotal(id, inp.value);
+  rerenderCard(id);
+  toast('📊 EST TOTAL LOCKED');
+}
+
+function doLockTip(id) {
+  var inp = document.getElementById('tip-'+id);
+  if (!inp || !inp.value) { toast('ENTER TIP TIME'); return; }
+  saveTipTime(id, inp.value);
+  rerenderCard(id);
+  toast('⏰ TIP TIME LOCKED');
+}
+
+// ─── OUTCOME LOGGING ─────────────────────────────────────
+function doLog(id) {
+  var g = currentGames.filter(function(x){return x.id===id;})[0];
+  if (!g) return;
+  var aS = parseInt(document.getElementById('la-'+id).value);
+  var hS = parseInt(document.getElementById('lh-'+id).value);
+  if (isNaN(aS)||isNaN(hS)) { toast('ENTER BOTH SCORES'); return; }
+
+  var tipTimes = getTipTimes();
+  var tip = tipTimes[id];
+  var movLog = getMovLog(g.book||'Circa');
+  var bookLog = (movLog[id]||[]).filter(function(m){return !m.book||m.book===(g.book||'Circa');});
+
+  // Build snapshot readings with hours before tip
+  var readings = [];
+  snaps.forEach(function(snap) {
+    var sg = snap.games && snap.games.filter(function(x){return x.id===id;})[0];
+    if (!sg) return;
+    var h = mtHour(snap.ts);
+    var hbt = tip ? hrsBeforeTip(snap.ts, tip.mins) : null;
+
+    var awayDom = sg.awayHandle > sg.homeHandle;
+    var sharpH = awayDom ? sg.awayHandle : sg.homeHandle;
+    var sharpB = awayDom ? sg.awayBets : sg.homeBets;
+    var delta = sharpH - sharpB;
+    var sharpTeamSide = awayDom ? 'away' : 'home';
+
+    var combined = aS + hS;
+    var spreadCorrect = null;
+    if (delta >= 15 && sharpH >= 55) {
+      spreadCorrect = awayDom ? (aS + sg.awaySpread) > hS : (hS + Math.abs(sg.awaySpread)) > aS;
+    }
+    var totalCorrect = null;
+    var od = sg.overHandle - sg.overBets;
+    var ud = sg.underHandle - sg.underBets;
+    if (sg.overHandle >= 60 && od >= 15) totalCorrect = combined > sg.total;
+    else if (sg.underHandle >= 60 && ud >= 15) totalCorrect = combined < sg.total;
+
+    readings.push({ time:snap.time, ts:snap.ts, hourMT:h, hrsBeforeTip:hbt, awayHandle:sg.awayHandle, homeHandle:sg.homeHandle, awayBets:sg.awayBets, homeBets:sg.homeBets, overHandle:sg.overHandle, underHandle:sg.underHandle, overBets:sg.overBets, underBets:sg.underBets, sharpSide:sharpTeamSide, sharpH:sharpH, sharpDelta:delta, spreadCorrect:spreadCorrect, totalCorrect:totalCorrect, isLegacy:false });
+  });
+
+  // Final spread/total correct from last reading
+  var lastR = readings[readings.length-1];
+  var spreadCorrect = lastR ? lastR.spreadCorrect : null;
+  var totalCorrect = lastR ? lastR.totalCorrect : null;
+
+  // Est total
+  var estTotals = getEstTotals();
+  var est = estTotals[id];
+  var estGap = est ? est.value - g.total : null;
+
+  // Handle swing calc
+  var spreadHandleSwing = null, totalHandleSwing = null;
+  if (readings.length >= 2) {
+    var first = readings[0], last = readings[readings.length-1];
+    var fSide = first.awayHandle > first.homeHandle ? 'away' : 'home';
+    var lSide = last.awayHandle > last.homeHandle ? 'away' : 'home';
+    var flipped = fSide !== lSide;
+    var fH = fSide==='away'?first.awayHandle:first.homeHandle;
+    var lH = lSide==='away'?last.awayHandle:last.homeHandle;
+    spreadHandleSwing = flipped ? -lH : (lH - fH);
+    var fOD = first.overHandle > first.underHandle;
+    var lOD = last.overHandle > last.underHandle;
+    var tFlip = fOD !== lOD;
+    var fTH = fOD?first.overHandle:first.underHandle;
+    var lTH = lOD?last.overHandle:last.underHandle;
+    totalHandleSwing = tFlip ? -lTH : (lTH - fTH);
+  }
+
+  var outcomes = getOutcomes();
+  var filtered = outcomes.filter(function(o){return o.gameId!==id;});
+  filtered.push({
+    gameId:id, awayTeam:g.awayTeam, homeTeam:g.homeTeam, sport:g.sport, book:g.book||'Circa',
+    awayScore:aS, homeScore:hS, date:new Date().toLocaleDateString(),
+    spreadCorrect:spreadCorrect, totalCorrect:totalCorrect,
+    spreadSide:g.spreadSide, totalSide:g.totalSide,
+    awaySpread:g.awaySpread, total:g.total,
+    estTotal:est?est.value:null, marketTotalAtBet:g.total, estGap:estGap,
+    spreadHandleSwing:spreadHandleSwing, totalHandleSwing:totalHandleSwing,
+    snapshotReadings:readings, isLegacy:false
+  });
+  localStorage.setItem('sm_outcomes', JSON.stringify(filtered));
+  toast('✓ RESULT LOGGED');
+  renderAnalytics();
+}
+
+// ─── TABS ────────────────────────────────────────────────
+function showTab(tab, el) {
+  ['board','history','analytics'].forEach(function(t){
+    document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  el.classList.add('active');
+  if (tab==='history') renderHistory();
+  if (tab==='analytics') renderAnalytics();
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  var movs = currentGames.length ? detectMovements(currentGames) : {};
+  renderBoard(currentGames, movs);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────
+function renderHistory() {
+  var el = document.getElementById('historyList');
+  if (!snaps.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🕐</div><div class="empty-title">No Snapshots</div></div>'; return; }
+  el.innerHTML = snaps.slice().reverse().map(function(s) {
+    var bookColor = (s.book||'Circa')==='DraftKings'?'var(--blue)':'var(--green)';
+    return '<div class="snap-card"><div class="snap-header"><div><div class="snap-time">'+s.time+'</div><div class="snap-meta">'+s.gameCount+' GAMES · '+new Date(s.ts).toLocaleDateString()+' · <span style="color:'+bookColor+'">'+( s.book||'Circa')+'</span></div></div><button class="del-btn" onclick="deleteSnap('+s.id+')">DELETE</button></div></div>';
+  }).join('');
+}
+
+function deleteSnap(id) {
+  snaps = snaps.filter(function(s){return s.id!==id;});
+  setStore('sm_snaps', snaps);
+  document.getElementById('snapCount').textContent = snaps.length;
+  renderHistory();
+}
+
+function clearAllSnaps() {
+  if(!confirm('Clear all snapshots?')) return;
+  snaps = [];
+  setStore('sm_snaps', snaps);
+  document.getElementById('snapCount').textContent = 0;
+  renderHistory();
+  toast('ALL SNAPSHOTS CLEARED');
+}
+
+// ─── BASELINE UI ─────────────────────────────────────────
+function updateBaselineUI() {
+  var bl = getBaseline();
+  var bar = document.getElementById('baselineBar');
+  if (bl) {
+    bar.style.display = 'flex';
+    document.getElementById('baselineTime').textContent = bl.time;
+    var bk = bl.games&&bl.games.length?(bl.games[0].book||'Circa'):'Circa';
+    var el = document.getElementById('baselineBook');
+    el.textContent = bk;
+    el.style.color = bk==='DraftKings'?'var(--blue)':'var(--green)';
+  } else { bar.style.display = 'none'; }
+}
+
+// ─── NEW DAY ─────────────────────────────────────────────
+function resetDay() {
+  if(!confirm('Reset for new day? Clears all snapshots, baseline and movement logs.')) return;
+  snaps = []; currentGames = []; expandedCards = {};
+  setStore('sm_snaps', snaps);
+  localStorage.removeItem('sm_baseline');
+  localStorage.removeItem('sm_est');
+  localStorage.removeItem('sm_tip');
+  localStorage.removeItem('sm_notes');
+  ['Circa','DraftKings','NBA','NHL','MLB','NFL','NCAAM'].forEach(function(b){ localStorage.removeItem('sm_mov_'+b); });
+  document.getElementById('snapCount').textContent = 0;
+  document.getElementById('lastUpdate').textContent = '—';
+  document.getElementById('summaryBar').style.display = 'none';
+  document.getElementById('baselineBar').style.display = 'none';
+  document.getElementById('gamesList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Paste VSiN data above to start monitoring.</div></div>';
+  renderHistory();
+  toast('NEW DAY — ALL DATA CLEARED');
+}
+
+// ─── ANALYTICS ───────────────────────────────────────────
+function pct(arr) {
+  if(!arr||!arr.length) return '—';
+  return Math.round(arr.filter(Boolean).length/arr.length*100)+'%';
+}
+
+function barHTML(arr, color) {
+  if(!arr||!arr.length) return '';
+  var p = arr.filter(Boolean).length/arr.length;
+  var c = color||(p>=0.55?'var(--green)':p>=0.45?'var(--yellow)':'var(--red)');
+  return '<div class="a-bar"><div class="a-bar-fill" style="width:'+Math.round(p*100)+'%;background:'+c+'"></div></div>';
+}
+
+function aColor(arr) {
+  if(!arr||!arr.length) return 'var(--muted)';
+  var p = arr.filter(Boolean).length/arr.length;
+  return p>=0.55?'var(--green)':p>=0.45?'var(--yellow)':'var(--red)';
+}
+
+function aRow(label, arr, sub) {
+  var p = pct(arr); var c = aColor(arr);
+  return '<div class="a-row"><div><div class="a-row-label">'+label+'</div>'+(sub?'<div class="a-row-sub">'+sub+'</div>':'')+barHTML(arr)+'</div><div class="a-games">'+(arr?arr.length:0)+'g</div><div class="a-pct" style="color:'+c+'">'+p+'</div></div>';
+}
+
+function renderAnalytics() {
+  var el = document.getElementById('analyticsContent');
+  var outcomes = getOutcomes();
+  if (!outcomes.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Log game results from the Board tab to build your analytics.</div></div>';
+    return;
+  }
+
+  var html = '';
+
+  // Legacy warning
+  var legacy = outcomes.filter(function(o){return o.isLegacy;});
+  if (legacy.length) html += '<div class="warn-bar">⚠ '+legacy.length+' LEGACY ENTRIES — Re-log to include in time breakdowns</div>';
+
+  // Overall
+  var sOut = outcomes.filter(function(o){return o.spreadCorrect!==null;});
+  var tOut = outcomes.filter(function(o){return o.totalCorrect!==null;});
+  html += '<div class="a-section-title">Overall Accuracy</div>';
+  html += '<div class="stat-grid"><div class="stat-cell"><div class="stat-num" style="color:'+aColor(sOut.map(function(o){return o.spreadCorrect;}))+'">'+pct(sOut.map(function(o){return o.spreadCorrect;}))+'</div><div class="stat-desc">SPREAD<br>'+sOut.length+' GAMES</div></div><div class="stat-cell"><div class="stat-num" style="color:'+aColor(tOut.map(function(o){return o.totalCorrect;}))+'">'+pct(tOut.map(function(o){return o.totalCorrect;}))+'</div><div class="stat-desc">TOTAL<br>'+tOut.length+' GAMES</div></div></div>';
+
+  // Flatten all readings (non-legacy)
+  var allR = [];
+  outcomes.forEach(function(o) {
+    if (o.isLegacy) {
+      allR.push({hourMT:null,spreadCorrect:o.spreadCorrect,totalCorrect:o.totalCorrect,signalScore:0,sport:o.sport,book:o.book||'Circa',hrsBeforeTip:null,isLegacy:true});
+    } else {
+      (o.snapshotReadings||[]).forEach(function(r){
+        allR.push(Object.assign({},r,{sport:o.sport,book:o.book||'Circa'}));
+      });
+    }
+  });
+
+  // By time bucket
+  var buckets = {'Early AM (5-9AM)':{s:[],t:[]},'Mid Morning (9-12PM)':{s:[],t:[]},'Afternoon (12-4PM)':{s:[],t:[]},'Evening (4-8PM)':{s:[],t:[]},'Night (8PM+)':{s:[],t:[]}};
+  function getBucket(h) {
+    if(h>=5&&h<9) return 'Early AM (5-9AM)';
+    if(h>=9&&h<12) return 'Mid Morning (9-12PM)';
+    if(h>=12&&h<16) return 'Afternoon (12-4PM)';
+    if(h>=16&&h<20) return 'Evening (4-8PM)';
     return 'Night (8PM+)';
   }
+  allR.forEach(function(r) {
+    if(r.hourMT===null||r.isLegacy) return;
+    var b = getBucket(r.hourMT);
+    if(r.spreadCorrect!==null) buckets[b].s.push(r.spreadCorrect);
+    if(r.totalCorrect!==null) buckets[b].t.push(r.totalCorrect);
+  });
 
-  function pct(arr) {
-    if (!arr.length) return '—';
-    return Math.round(arr.filter(Boolean).length / arr.length * 100) + '%';
-  }
+  html += '<div class="a-section-title" style="margin-top:16px">Accuracy By Time (MT)</div>';
+  html += '<div class="a-subtitle">Each snapshot reading evaluated separately</div>';
+  html += '<div class="a-table">';
+  Object.keys(buckets).forEach(function(b) {
+    var d = buckets[b];
+    var all = d.s.concat(d.t);
+    if(!all.length) return;
+    html += '<div class="a-row"><div><div class="a-row-label">'+b+'</div>'+barHTML(all)+'</div>';
+    html += '<div style="text-align:center"><div class="a-games">SPRD</div><div class="a-pct" style="font-size:12px;color:'+aColor(d.s)+'">'+pct(d.s)+'</div></div>';
+    html += '<div style="text-align:center"><div class="a-games">TOTL</div><div class="a-pct" style="font-size:12px;color:'+aColor(d.t)+'">'+pct(d.t)+'</div></div></div>';
+  });
+  html += '</div>';
 
-  function bar(arr) {
-    if (!arr.length) return '';
-    const p = arr.filter(Boolean).length / arr.length;
-    const color = p >= 0.55 ? 'var(--green)' : p >= 0.45 ? 'var(--yellow)' : 'var(--red)';
-    return `<div style="height:4px;background:var(--dim);border-radius:2px;margin-top:4px"><div style="width:${Math.round(p*100)}%;height:100%;background:${color};border-radius:2px"></div></div>`;
-  }
-
-  function renderAnalytics() {
-    const outcomes = getOutcomes();
-    const el = document.getElementById('analyticsContent');
-
-    if (!outcomes.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Outcomes Yet</div><div class="empty-desc">Log game results from the Board tab to start building your signal accuracy database.</div></div>`;
-      return;
-    }
-
-    // ── Flatten all snapshot readings across all outcomes ──
-    // Falls back to top-level fields for old outcomes without snapshotReadings
-    const allReadings = [];
-    outcomes.forEach(o => {
-      const readings = o.snapshotReadings || [];
-      if (readings.length > 0) {
-        readings.forEach(r => {
-          allReadings.push({ ...r, sport: o.sport, book: o.book || 'Circa', awayTeam: o.awayTeam, homeTeam: o.homeTeam, awayScore: o.awayScore, homeScore: o.homeScore });
-        });
-      } else {
-        // Legacy outcome — mark as legacy, exclude from time/score breakdowns
-        allReadings.push({
-          sport: o.sport,
-          awayTeam: o.awayTeam,
-          homeTeam: o.homeTeam,
-          awayScore: o.awayScore,
-          homeScore: o.homeScore,
-          hourMT: null, // null = exclude from time bucket analysis
-          spreadCorrect: o.spreadCorrect,
-          totalCorrect: o.totalCorrect,
-          signalScore: null, // null = exclude from score analysis
-          sharpSpreadTeam: o.spreadSide || null,
-          time: o.date || '—',
-          isLegacy: true
-        });
+  // Handle swing by time window (needs tip time)
+  var withTip = outcomes.filter(function(o){ return (o.snapshotReadings||[]).some(function(r){return r.hrsBeforeTip!==null;}); });
+  if (withTip.length) {
+    html += '<div class="a-section-title" style="margin-top:16px">Signal Accuracy By Window</div>';
+    html += '<div class="a-subtitle">'+withTip.length+' games with tip time locked</div>';
+    var windows = [{label:'4+ hrs before',min:4,max:99},{label:'2-4 hrs before',min:2,max:4},{label:'1-2 hrs before',min:1,max:2},{label:'Final hour',min:0,max:1}];
+    var sWin = {}, tWin = {};
+    windows.forEach(function(w){sWin[w.label]=[];tWin[w.label]=[];});
+    var flipFollow = [], flipHold = [];
+    withTip.forEach(function(o) {
+      var rs = o.snapshotReadings||[];
+      var lastR = rs[rs.length-1];
+      var lastSide = lastR&&lastR.awayHandle>lastR.homeHandle?'away':'home';
+      var lastOD = lastR&&lastR.overHandle>lastR.underHandle;
+      windows.forEach(function(w) {
+        var wr = rs.filter(function(r){return r.hrsBeforeTip!==null&&r.hrsBeforeTip>=w.min&&r.hrsBeforeTip<w.max;});
+        if(!wr.length) return;
+        var mid = wr[Math.floor(wr.length/2)];
+        if(o.spreadCorrect!==null) sWin[w.label].push(o.spreadCorrect);
+        if(o.totalCorrect!==null) tWin[w.label].push(o.totalCorrect);
+      });
+      // Flip analysis: 4hr vs final
+      var r4 = rs.filter(function(r){return r.hrsBeforeTip!==null&&r.hrsBeforeTip>=4;})[0];
+      if(r4&&lastR&&o.spreadCorrect!==null) {
+        var s4 = r4.awayHandle>r4.homeHandle?'away':'home';
+        if(s4!==lastSide) { flipFollow.push(o.spreadCorrect); flipHold.push(!o.spreadCorrect); }
       }
     });
-
-    // ── Overall signal accuracy ──
-    const spreadOutcomes = outcomes.filter(o => o.spreadCorrect !== null);
-    const totalOutcomes = outcomes.filter(o => o.totalCorrect !== null);
-
-    // ── By time bucket using snapshot readings ──
-    const buckets = {
-      'Early AM (5-9AM)': { spread: [], total: [] },
-      'Mid Morning (9-12PM)': { spread: [], total: [] },
-      'Afternoon (12-4PM)': { spread: [], total: [] },
-      'Evening (4-8PM)': { spread: [], total: [] },
-      'Night (8PM+)': { spread: [], total: [] }
-    };
-
-    allReadings.forEach(r => {
-      if (r.hourMT === null || r.isLegacy) return; // skip legacy outcomes
-      const b = getHourBucket(r.hourMT);
-      if (r.spreadCorrect !== null) buckets[b].spread.push(r.spreadCorrect);
-      if (r.totalCorrect !== null) buckets[b].total.push(r.totalCorrect);
+    html += '<div class="a-table">';
+    windows.forEach(function(w) {
+      var sa = sWin[w.label], ta = tWin[w.label];
+      if(!sa.length&&!ta.length) return;
+      html += '<div class="a-row"><div><div class="a-row-label">'+w.label+'</div>'+barHTML(sa.concat(ta))+'</div>';
+      html += '<div style="text-align:center"><div class="a-games">SPRD</div><div class="a-pct" style="font-size:12px;color:'+aColor(sa)+'">'+pct(sa)+'</div></div>';
+      html += '<div style="text-align:center"><div class="a-games">TOTL</div><div class="a-pct" style="font-size:12px;color:'+aColor(ta)+'">'+pct(ta)+'</div></div></div>';
     });
+    html += '</div>';
 
-    // ── Signal flip analysis ──
-    // Only applies to outcomes with multiple snapshot readings
-    const flipAnalysis = { flipped: { spread: [], total: [] }, held: { spread: [], total: [] } };
-    outcomes.forEach(o => {
-      const readings = o.snapshotReadings || [];
-      if (readings.length < 2) return; // Skip legacy outcomes and single-snapshot games
-      const first = readings[0];
-      const last = readings[readings.length - 1];
-
-      // Spread flip detection
-      const spreadFlipped = first.sharpSpreadTeam !== last.sharpSpreadTeam &&
-        first.sharpSpreadTeam !== null && last.sharpSpreadTeam !== null;
-      if (spreadFlipped) {
-        // Was the LATE signal correct?
-        if (last.spreadCorrect !== null) flipAnalysis.flipped.spread.push(last.spreadCorrect);
-        // Was the EARLY signal correct?
-        if (first.spreadCorrect !== null) flipAnalysis.flipped.spread.push(!first.spreadCorrect); // inverse = early was wrong
-      } else if (first.sharpSpreadTeam !== null && last.spreadCorrect !== null) {
-        flipAnalysis.held.spread.push(last.spreadCorrect);
-      }
-    });
-
-    // ── By signal strength (using snapshot score) ──
-    const scoreGroups = { 'Strong (8-10)': { spread: [], total: [] }, 'Moderate (5-7)': { spread: [], total: [] }, 'Weak (1-4)': { spread: [], total: [] } };
-    allReadings.forEach(r => {
-      if (r.signalScore === null || r.signalScore === undefined || r.isLegacy) return; // skip legacy
-      const s = r.signalScore;
-      const group = s >= 8 ? 'Strong (8-10)' : s >= 5 ? 'Moderate (5-7)' : 'Weak (1-4)';
-      if (r.spreadCorrect !== null) scoreGroups[group].spread.push(r.spreadCorrect);
-      if (r.totalCorrect !== null) scoreGroups[group].total.push(r.totalCorrect);
-    });
-
-    // ── By sport ──
-    const sports = {};
-    allReadings.forEach(r => {
-      if (!sports[r.sport]) sports[r.sport] = { spread: [], total: [] };
-      if (r.spreadCorrect !== null) sports[r.sport].spread.push(r.spreadCorrect);
-      if (r.totalCorrect !== null) sports[r.sport].total.push(r.totalCorrect);
-    });
-
-    el.innerHTML = `
-      <!-- Legacy notice -->
-      ${allReadings.filter(r => r.isLegacy).length > 0 ? `
-      <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:4px;padding:8px 12px;margin-bottom:12px;letter-spacing:0.05em">
-        ⚠ ${allReadings.filter(r => r.isLegacy).length} LEGACY ENTRIES — Re-log these games to include them in time & score breakdowns
-      </div>` : ''}
-
-      <!-- Overall -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:16px">
-        <div class="callout">
-          <div class="callout-num" style="color:${spreadOutcomes.filter(o=>o.spreadCorrect).length/spreadOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(spreadOutcomes.map(o=>o.spreadCorrect))}</div>
-          <div class="callout-desc">SPREAD ACCURACY<br>${spreadOutcomes.length} GAMES</div>
-        </div>
-        <div class="callout">
-          <div class="callout-num" style="color:${totalOutcomes.filter(o=>o.totalCorrect).length/totalOutcomes.length >= 0.55 ? 'var(--green)' : 'var(--red)'}">${pct(totalOutcomes.map(o=>o.totalCorrect))}</div>
-          <div class="callout-desc">TOTAL ACCURACY<br>${totalOutcomes.length} GAMES</div>
-        </div>
-      </div>
-
-      <!-- Signal flip analysis -->
-      ${flipAnalysis.flipped.spread.length > 0 || flipAnalysis.held.spread.length > 0 ? `
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Signal Flip Analysis</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-          <div>
-            <div style="font-size:12px;font-weight:500">Signal held all day</div>
-            <div style="font-size:11px;color:var(--muted)">Early signal = late signal → outcome</div>
-            ${bar(flipAnalysis.held.spread)}
-          </div>
-          <div style="text-align:right">
-            <div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:${flipAnalysis.held.spread.filter(Boolean).length/flipAnalysis.held.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.held.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.held.spread)}</div>
-            <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${flipAnalysis.held.spread.length} games</div>
-          </div>
-        </div>
-        <div style="padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-          <div>
-            <div style="font-size:12px;font-weight:500">Signal flipped before tip</div>
-            <div style="font-size:11px;color:var(--muted)">Was the late flip correct?</div>
-            ${bar(flipAnalysis.flipped.spread)}
-          </div>
-          <div style="text-align:right">
-            <div style="font-family:JetBrains Mono,monospace;font-size:15px;font-weight:700;color:${flipAnalysis.flipped.spread.filter(Boolean).length/flipAnalysis.flipped.spread.length >= 0.55 ? 'var(--green)' : flipAnalysis.flipped.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(flipAnalysis.flipped.spread)}</div>
-            <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${flipAnalysis.flipped.spread.length} games</div>
-          </div>
-        </div>
-      </div>` : ''}
-
-      <!-- By time of day (snapshot level) -->
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Accuracy By Time Pasted (MT)</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">Each snapshot reading evaluated separately — shows which time windows produce accurate signals</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(buckets).map(([label, data]) => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
-            <div>
-              <div style="font-size:12px;font-weight:500">${label}</div>
-              ${bar([...data.spread, ...data.total])}
-            </div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${data.spread.length}r</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">${data.total.length}r</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- By signal strength -->
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Signal Strength Score</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(scoreGroups).map(([label, data]) => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
-            <div>
-              <div style="font-size:12px;font-weight:500">${label}</div>
-              ${bar([...data.spread, ...data.total])}
-            </div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- By sport -->
-      ${Object.keys(sports).length > 1 ? `
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Sport</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;overflow:hidden">
-        ${Object.entries(sports).map(([sport, data]) => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
-            <div style="font-size:12px;font-weight:500">${sport}</div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">SPRD</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.spread.filter(Boolean).length/data.spread.length >= 0.55 ? 'var(--green)' : data.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.spread)}</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">TOTL</div>
-              <div style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${data.total.filter(Boolean).length/data.total.length >= 0.55 ? 'var(--green)' : data.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(data.total)}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>` : ''}
-
-      <!-- Per book analytics -->
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">By Book</div>
-      ${['Circa', 'DraftKings'].map(book => {
-        const bookOutcomes = outcomes.filter(o => (o.book || 'Circa') === book);
-        const bookReadings = allReadings.filter(r => (r.book || 'Circa') === book && !r.isLegacy);
-        if (!bookOutcomes.length) return `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;padding:16px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
-              <span style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">No data yet</span>
-            </div>
-            <div style="font-size:12px;color:var(--muted)">Select ${book} before pasting to start building this dataset.</div>
-          </div>`;
-
-        const bSpread = bookOutcomes.filter(o => o.spreadCorrect !== null);
-        const bTotal = bookOutcomes.filter(o => o.totalCorrect !== null);
-
-        // Time buckets for this book
-        const bBuckets = {
-          'Early AM': { spread: [], total: [] },
-          'Mid Morning': { spread: [], total: [] },
-          'Afternoon': { spread: [], total: [] },
-          'Evening': { spread: [], total: [] },
-          'Night': { spread: [], total: [] }
-        };
-        const bucketMap = { 'Early AM (5-9AM)': 'Early AM', 'Mid Morning (9-12PM)': 'Mid Morning', 'Afternoon (12-4PM)': 'Afternoon', 'Evening (4-8PM)': 'Evening', 'Night (8PM+)': 'Night' };
-        bookReadings.forEach(r => {
-          if (r.hourMT === null) return;
-          const bk = bucketMap[getHourBucket(r.hourMT)];
-          if (r.spreadCorrect !== null) bBuckets[bk].spread.push(r.spreadCorrect);
-          if (r.totalCorrect !== null) bBuckets[bk].total.push(r.totalCorrect);
-        });
-
-        return `
-          <div style="background:var(--surface);border:1px solid ${book === 'DraftKings' ? 'rgba(0,176,255,0.3)' : 'rgba(0,255,135,0.3)'};border-radius:4px;margin-bottom:12px;overflow:hidden">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;color:${book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${book.toUpperCase()}</span>
-              <div style="display:flex;gap:16px">
-                <div style="text-align:center">
-                  <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:${bSpread.filter(o=>o.spreadCorrect).length/bSpread.length >= 0.55 ? 'var(--green)' : bSpread.length ? 'var(--red)' : 'var(--muted)'}">${pct(bSpread.map(o=>o.spreadCorrect))}</div>
-                  <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">SPREAD · ${bSpread.length}g</div>
-                </div>
-                <div style="text-align:center">
-                  <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:${bTotal.filter(o=>o.totalCorrect).length/bTotal.length >= 0.55 ? 'var(--green)' : bTotal.length ? 'var(--red)' : 'var(--muted)'}">${pct(bTotal.map(o=>o.totalCorrect))}</div>
-                  <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted)">TOTAL · ${bTotal.length}g</div>
-                </div>
-              </div>
-            </div>
-            <!-- Time breakdown for this book -->
-            ${Object.entries(bBuckets).some(([,d]) => d.spread.length || d.total.length) ? `
-            <div style="padding:10px 14px">
-              <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px">TIME BREAKDOWN</div>
-              ${Object.entries(bBuckets).filter(([,d]) => d.spread.length || d.total.length).map(([label, d]) => `
-                <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:6px">
-                  <div>
-                    <div style="font-size:11px;color:var(--text)">${label}</div>
-                    ${bar([...d.spread, ...d.total])}
-                  </div>
-                  <div style="text-align:center">
-                    <div style="font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:${d.spread.filter(Boolean).length/d.spread.length >= 0.55 ? 'var(--green)' : d.spread.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.spread)}</div>
-                    <div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--muted)">SPRD</div>
-                  </div>
-                  <div style="text-align:center">
-                    <div style="font-family:JetBrains Mono,monospace;font-size:11px;font-weight:600;color:${d.total.filter(Boolean).length/d.total.length >= 0.55 ? 'var(--green)' : d.total.length ? 'var(--red)' : 'var(--muted)'}">${pct(d.total)}</div>
-                    <div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--muted)">TOTL</div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--muted)">Log more games to see time breakdown</div>'}
-          </div>`;
-      }).join('')}
-
-      <!-- Est Total Analysis -->
-      \${renderEstTotalAnalytics(outcomes, allReadings, pct, bar)}
-
-            <!-- Recent results -->
-      <div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:0.05em;margin-bottom:8px;color:var(--text)">Recent Results</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
-        ${[...getOutcomes()].reverse().slice(0, 20).map(o => `
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
-            <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start">
-              <div>
-                <div style="font-size:12px;font-weight:500">${o.awayTeam.split(' ').pop()} @ ${o.homeTeam.split(' ').pop()}</div>
-                <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${o.date} · ${o.sport} · ${o.awayScore}-${o.homeScore} · ${(o.snapshotReadings||[]).length} snapshots</div>
-              </div>
-              <div style="display:flex;gap:4px;align-items:center">
-                ${o.spreadCorrect !== null ? `<span style="font-family:JetBrains Mono,monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.spreadCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.spreadCorrect ? 'var(--green)' : 'var(--red)'}">${o.spreadCorrect ? 'SPRD ✓' : 'SPRD ✗'}</span>` : ''}
-                ${o.totalCorrect !== null ? `<span style="font-family:JetBrains Mono,monospace;font-size:10px;padding:2px 6px;border-radius:2px;background:${o.totalCorrect ? 'rgba(0,255,135,0.1)' : 'rgba(255,61,90,0.1)'};color:${o.totalCorrect ? 'var(--green)' : 'var(--red)'}">${o.totalCorrect ? 'TOTL ✓' : 'TOTL ✗'}</span>` : ''}
-              </div>
-            </div>
-            <!-- Mini snapshot timeline — only for new outcomes with full history -->
-            ${(o.snapshotReadings||[]).length > 1 ? `
-            <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
-              ${(o.snapshotReadings||[]).map(r => `
-                <span style="font-family:JetBrains Mono,monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:var(--surface2);color:${r.spreadCorrect === true ? 'var(--green)' : r.spreadCorrect === false ? 'var(--red)' : 'var(--muted)'}">
-                  ${r.time} ${r.spreadCorrect !== null ? (r.spreadCorrect ? '✓' : '✗') : '—'}
-                </span>
-              `).join('')}
-            </div>` : `<div style="margin-top:4px;font-family:JetBrains Mono,monospace;font-size:9px;color:var(--yellow)">⚠ Legacy — re-log to include in time breakdown</div>`}
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  // ─── RENDER ──────────────────────────────────────────────
-  function calcSignalScore(g, moves, gameLog) {
-    let score = 0;
-
-    // Delta strength (0-3 pts)
-    const delta = Math.abs(g.sharpSpreadDelta || 0);
-    if (delta >= 40) score += 3;
-    else if (delta >= 25) score += 2;
-    else if (delta >= 15) score += 1;
-
-    // Total delta (0-2 pts)
-    const tdelta = Math.abs(g.totalDelta || 0);
-    if (tdelta >= 30) score += 2;
-    else if (tdelta >= 15) score += 1;
-
-    // Line movement confirmed (0-2 pts)
-    const hasLineMove = moves.some(m => m.field === 'SPREAD') || gameLog.some(m => m.field === 'SPREAD');
-    const hasTotalMove = moves.some(m => m.field === 'TOTAL') || gameLog.some(m => m.field === 'TOTAL');
-    if (hasLineMove) score += 2;
-    if (hasTotalMove) score += 1;
-
-    // Signal consistency — how many snapshots has this been flagged (0-2 pts)
-    const logEntries = gameLog.length;
-    if (logEntries >= 4) score += 2;
-    else if (logEntries >= 2) score += 1;
-
-    return Math.min(score, 10);
-  }
-
-  function scoreColor(score) {
-    if (score >= 8) return 'var(--green)';
-    if (score >= 5) return 'var(--yellow)';
-    return 'var(--red)';
-  }
-
-  function scoreLabel(score) {
-    if (score >= 8) return 'STRONG';
-    if (score >= 5) return 'MODERATE';
-    return 'WEAK';
-  }
-
-  function renderBoard(games, movements) {
-    const list = document.getElementById('gamesList');
-    const summaryBar = document.getElementById('summaryBar');
-
-    if (!games.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Data Yet</div><div class="empty-desc">Paste VSiN data above to analyze.</div></div>`;
-      summaryBar.style.display = 'none';
-      return;
+    if(flipFollow.length) {
+      html += '<div class="a-section-title" style="margin-top:16px">When Signal Flipped — Follow or Hold?</div>';
+      html += '<div class="a-subtitle">'+flipFollow.length+' games where 4hr+ signal reversed before tip</div>';
+      html += '<div class="a-table"><div style="padding:12px 14px"><div class="flip-grid">';
+      html += '<div class="flip-box"><div class="flip-box-label">FOLLOW FLIP</div><div class="flip-box-val" style="color:'+aColor(flipFollow)+'">'+pct(flipFollow)+'</div></div>';
+      html += '<div class="flip-box"><div class="flip-box-label">HOLD ORIGINAL</div><div class="flip-box-val" style="color:'+aColor(flipHold)+'">'+pct(flipHold)+'</div></div>';
+      html += '</div></div></div>';
     }
-
-    // Update summary
-    summaryBar.style.display = 'grid';
-    const whales = games.filter(g => g.overallSignal === 'whale').length;
-    const traps = games.filter(g => g.overallSignal === 'trap').length;
-    const moved = Object.keys(movements).length;
-    document.getElementById('sumGames').textContent = games.length;
-    document.getElementById('sumWhale').textContent = whales;
-    document.getElementById('sumTrap').textContent = traps;
-    document.getElementById('sumMoved').textContent = moved;
-
-    // Filter
-    let filtered = games;
-    if (activeFilter === 'whale') filtered = games.filter(g => g.overallSignal === 'whale');
-    else if (activeFilter === 'trap') filtered = games.filter(g => g.overallSignal === 'trap');
-    else if (activeFilter === 'moved') filtered = games.filter(g => movements[g.id]);
-    else if (activeFilter === 'spread') filtered = games.filter(g => g.spreadSignal !== 'neutral');
-    else if (activeFilter === 'total') filtered = games.filter(g => g.totalSignal !== 'neutral');
-    else if (SPORTS.includes(activeFilter)) filtered = games.filter(g => g.sport === activeFilter);
-    else if (['Circa', 'DraftKings'].includes(activeFilter)) filtered = games.filter(g => (g.book || 'Circa') === activeFilter);
-
-    // Sort: signals first, then by spread delta
-    filtered.sort((a, b) => {
-      const sigOrder = { whale: 0, trap: 1, neutral: 2 };
-      const aOrder = sigOrder[a.overallSignal];
-      const bOrder = sigOrder[b.overallSignal];
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return Math.abs(b.spreadDelta) - Math.abs(a.spreadDelta);
-    });
-
-    // Attach movement deltas directly to game objects for inline display
-    filtered.forEach(game => {
-      const moves = movements[game.id] || [];
-      game.spreadMove = null;
-      game.totalMove = null;
-      for (const m of moves) {
-        if (m.field === 'SPREAD') game.spreadMove = parseFloat((m.to - m.from).toFixed(1));
-        if (m.field === 'TOTAL') game.totalMove = parseFloat((m.to - m.from).toFixed(1));
-      }
-    });
-    list.innerHTML = filtered.map(game => renderCard(game, movements[game.id] || [])).join('');
+  } else {
+    html += '<div class="a-table" style="margin-top:8px"><div style="padding:14px;font-size:12px;color:var(--muted)">🔒 Lock tip times on game cards to enable signal window analysis.</div></div>';
   }
 
-  // Profitable MT hour windows from user's actual data
-  const PROFITABLE_HOURS = [6,7,9,12,13,19,21]; // 6-8AM, 9-10AM, 12-2PM, 7-9PM, 9-10PM MT
-
-  function renderCard(g, moves) {
-    const isExpanded = expandedCards.has(g.id);
-    const hasMove = moves.length > 0;
-    const fullLog = getMovementLog();
-    const gameLog = fullLog[g.id] || [];
-    const notes = getNotes();
-    const gameNote = notes[g.id] || '';
-
-    // Filter movement log by book — must be before score calculation
-    const gameBook = g.book || 'Circa';
-    const filteredGameLog = gameLog.filter(m => !m.book || m.book === gameBook);
-
-    // Signal score
-    const score = (g.spreadSignal !== 'neutral' || g.totalSignal !== 'neutral') ? calcSignalScore(g, moves, filteredGameLog) : 0;
-
-    // Time window indicator — current MT hour
-    const nowMT = new Date(Date.now() - 7*60*60*1000);
-    const currentHour = nowMT.getUTCHours();
-    const inGoodWindow = PROFITABLE_HOURS.includes(currentHour);
-    const windowColor = inGoodWindow ? 'var(--green)' : currentHour >= 16 && currentHour <= 19 ? 'var(--yellow)' : 'var(--muted)';
-    const windowLabel = inGoodWindow ? '✓ GOOD WINDOW' : currentHour >= 16 && currentHour <= 19 ? '⚠ MARGINAL' : '— OFF WINDOW';
-
-    const spreadBadge = g.spreadSignal === 'whale'
-      ? `<span class="signal-badge badge-whale">🐋 WHALE</span>`
-      : g.spreadSignal === 'trap'
-      ? `<span class="signal-badge badge-trap">🪤 TRAP</span>`
-      : `<span class="signal-badge badge-neutral">SPREAD</span>`;
-
-    const totalBadge = g.totalSignal === 'whale'
-      ? `<span class="signal-badge badge-whale">🐋 ${g.totalSide}</span>`
-      : g.totalSignal === 'trap'
-      ? `<span class="signal-badge badge-trap">🪤 ${g.totalSide}</span>`
-      : '';
-
-    const moveBadge = hasMove ? `<span class="signal-badge badge-contested">📈 MOVED</span>` : '';
-
-    const cardClass = g.spreadSignal === 'whale' || g.totalSignal === 'whale' ? 'signal-whale'
-      : g.spreadSignal === 'trap' || g.totalSignal === 'trap' ? 'signal-trap'
-      : hasMove ? 'signal-contested' : '';
-
-    function pct(v) {
-      const cls = v >= 60 ? 'hot' : v <= 30 ? 'cold' : '';
-      return `<span class="split-handle ${cls}">${v}%</span>`;
-    }
-
-    const hasAnyMove = hasMove || filteredGameLog.length > 0;
-
-    const notesHTML = `
-      <div class="movement-section" style="border-top:1px solid var(--border)">
-        <div class="movement-title">📝 NOTES</div>
-        <textarea
-          id="note-${g.id}"
-          onchange="saveNote('${g.id}', this.value)"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:DM Sans,sans-serif;font-size:12px;padding:8px;resize:none;outline:none;line-height:1.5;margin-top:4px"
-          rows="2"
-          placeholder="Add context — injury news, reason for bet/pass..."
-        >${gameNote}</textarea>
-      </div>`;
-
-    // Estimated total
-    const estTotals = getEstTotals();
-    const estEntry = estTotals[g.id];
-    const estLocked = !!estEntry;
-
-    const estTotalHTML = `
-      <div class="movement-section" style="border-top:1px solid var(--border)">
-        <div class="movement-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>📊 VSiN ESTIMATED TOTAL</span>
-          ${estLocked ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--green)">🔒 LOCKED ${estEntry.lockedAt}</span>` : ''}
-        </div>
-        ${estLocked ? `
-          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-            <div style="font-family:JetBrains Mono,monospace;font-size:18px;font-weight:700;color:var(--green)">${estEntry.value}</div>
-            <div style="font-size:11px;color:var(--muted)">
-              vs market <span style="color:var(--text);font-weight:500">${g.total}</span>
-              ${estEntry.value > g.total ? 
-                `<span style="color:var(--green);margin-left:6px">↑ EST +${(estEntry.value - g.total).toFixed(1)} (LEAN OVER)</span>` : 
-                estEntry.value < g.total ?
-                `<span style="color:var(--red);margin-left:6px">↓ EST -${(g.total - estEntry.value).toFixed(1)} (LEAN UNDER)</span>` :
-                `<span style="color:var(--muted);margin-left:6px">= NEUTRAL</span>`
-              }
-            </div>
-            <button onclick="unlockEstTotal('${g.id}')"
-              style="font-family:JetBrains Mono,monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;margin-left:auto">
-              EDIT
-            </button>
-          </div>` : `
-          <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-            <input id="est-total-${g.id}" type="number" step="0.5" placeholder="Enter VSiN est. total..."
-              style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;flex:1">
-            <button onclick="submitEstTotal('${g.id}')"
-              style="background:var(--blue);color:#000;border:none;border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
-              LOCK
-            </button>
-          </div>`}
-      </div>`;
-
-    // Outcome logger
-    const outcomeHTML = `
-      <div class="movement-section" style="border-top:1px solid var(--border)">
-        <div class="movement-title">🏀 LOG RESULT</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:6px;align-items:center">
-          <input id="score-away-${g.id}" type="number" placeholder="${g.awayTeam.split(' ').pop()} score"
-            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
-          <input id="score-home-${g.id}" type="number" placeholder="${g.homeTeam.split(' ').pop()} score"
-            style="background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:12px;padding:6px 8px;outline:none;width:100%">
-          <button onclick="submitOutcome('${g.id}')"
-            style="background:var(--green);color:#000;border:none;border-radius:3px;font-family:JetBrains Mono,monospace;font-size:10px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap">
-            LOG
-          </button>
-        </div>
-      </div>`;
-
-    const movementHTML = hasAnyMove ? `
-      <div class="movement-section">
-        <div class="movement-title">📋 MOVEMENT LOG · ${gameBook} (${filteredGameLog.length} entries)</div>
-        <div class="movement-timeline">
-          ${filteredGameLog.map(m => `
-            <div class="movement-item">
-              <span class="mov-time">${m.time}</span>
-              <span class="mov-field">${m.field}</span>
-              <span class="mov-from">${m.from}${m.field === 'HANDLE' ? '%' : ''}</span>
-              <span class="mov-arrow mov-direction-${m.direction}">→</span>
-              <span class="mov-to">${m.to}${m.field === 'HANDLE' ? '%' : ''}</span>
-              ${m.team ? `<span style="color:var(--muted);font-size:9px">(${m.team.split(' ').pop()})</span>` : ''}
-              ${m.fromBaseline ? '<span style="color:var(--green);font-size:9px">FROM OPEN</span>' : ''}
-            </div>
-          `).join('')}
-          ${hasMove ? moves.map(m => `
-            <div class="movement-item" style="background:rgba(0,255,135,0.05)">
-              <span class="mov-time" style="color:var(--green)">NOW</span>
-              <span class="mov-field">${m.field}</span>
-              <span class="mov-from">${m.from}${m.field === 'HANDLE' ? '%' : ''}</span>
-              <span class="mov-arrow mov-direction-${m.direction}">→</span>
-              <span class="mov-to">${m.to}${m.field === 'HANDLE' ? '%' : ''}</span>
-              ${m.team ? `<span style="color:var(--muted);font-size:9px">(${m.team.split(' ').pop()})</span>` : ''}
-            </div>
-          `).join('') : ''}
-        </div>
-      </div>` : '';
-
-    const spreadDeltaColor = g.spreadSignal === 'whale' ? 'delta-pos' : g.spreadSignal === 'trap' ? 'delta-neg' : 'delta-neutral';
-    const totalDeltaColor = g.totalSignal === 'whale' ? 'delta-pos' : g.totalSignal === 'trap' ? 'delta-neg' : 'delta-neutral';
-
-    return `
-    <div class="game-card has-signal ${cardClass}" id="card-${g.id}">
-      <div class="card-header" onclick="toggleCard('${g.id}')">
-        <div>
-          <div class="matchup">
-            <span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);margin-right:6px">${g.sport}</span>
-            <span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${(g.book||'Circa')==='DraftKings' ? 'var(--blue)' : 'var(--green)'};margin-right:6px">${g.book||'Circa'}</span>
-            <span class="away">${g.awayTeam.split(' ').pop()}</span>
-            <span class="vs">@</span>
-            <span class="home">${g.homeTeam.split(' ').pop()}</span>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;align-items:center">
-            ${spreadBadge}${totalBadge}${moveBadge}
-            ${score > 0 ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;font-weight:700;color:${scoreColor(score)};padding:2px 6px;border:1px solid ${scoreColor(score)};border-radius:2px;opacity:0.9">${score}/10 ${scoreLabel(score)}</span>` : ''}
-            ${g.spreadMove ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">SPRD ${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)}</span>` : ''}
-            ${g.totalMove ? `<span style="font-family:JetBrains Mono,monospace;font-size:9px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'};letter-spacing:0.05em">O/U ${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)}</span>` : ''}
-          </div>
-        </div>
-        <span style="color:var(--muted);font-size:16px">${isExpanded ? '▲' : '▼'}</span>
-      </div>
-
-      <div class="card-body ${isExpanded ? '' : 'collapsed'}" id="body-${g.id}">
-        <div class="splits-grid">
-          <div class="split-cell">
-            <div class="split-label">SPREAD HDL</div>
-            <div class="split-row">
-              <span class="split-team">${g.awayTeam.split(' ').pop()}</span>
-              <div class="split-vals">${pct(g.awayHandle)}<span class="split-bets">${g.awayBets}%B</span></div>
-            </div>
-            <div class="split-row">
-              <span class="split-team">${g.homeTeam.split(' ').pop()}</span>
-              <div class="split-vals">${pct(g.homeHandle)}<span class="split-bets">${g.homeBets}%B</span></div>
-            </div>
-          </div>
-          <div class="split-cell">
-            <div class="split-label">TOTAL HDL</div>
-            <div class="split-row">
-              <span class="split-team">OVER</span>
-              <div class="split-vals">${pct(g.overHandle)}<span class="split-bets">${g.overBets}%B</span></div>
-            </div>
-            <div class="split-row">
-              <span class="split-team">UNDER</span>
-              <div class="split-vals">${pct(g.underHandle)}<span class="split-bets">${g.underBets}%B</span></div>
-            </div>
-          </div>
-          <div class="split-cell">
-            <div class="split-label">LINE</div>
-            <div class="split-row">
-              <span class="split-team">SPRD</span>
-              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:500">
-                ${g.awaySpread > 0 ? '+' : ''}${g.awaySpread}
-                ${g.spreadMove ? `<span style="font-size:10px;color:${g.spreadMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove)})</span>` : ''}
-              </span>
-            </div>
-            <div class="split-row">
-              <span class="split-team">O/U</span>
-              <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:500">
-                ${g.total}
-                ${g.totalMove ? `<span style="font-size:10px;color:${g.totalMove > 0 ? 'var(--green)' : 'var(--red)'}">(${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove)})</span>` : ''}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="delta-row" style="border-top:none;padding-top:4px">
-          <span class="delta-label">BETTING WINDOW (MT)</span>
-          <span style="font-family:JetBrains Mono,monospace;font-size:11px;color:${windowColor}">${windowLabel}</span>
-        </div>
-
-        <div class="delta-row">
-          <span class="delta-label">SPREAD DELTA · ${g.spreadSide ? g.spreadSide.split(' ').pop() : 'AWAY'} HDL-BETS</span>
-          <span class="delta-value ${spreadDeltaColor}">+${Math.abs(g.sharpSpreadDelta).toFixed(0)}%</span>
-        </div>
-        <div class="delta-row" style="border-top:none">
-          <span class="delta-label">TOTAL DELTA (HDL-BETS)</span>
-          <span class="delta-value ${totalDeltaColor}">${g.totalDelta > 0 ? '+' : ''}${g.totalDelta.toFixed(0)}%</span>
-        </div>
-
-        ${estTotalHTML}
-        ${notesHTML}
-        ${outcomeHTML}
-        ${movementHTML}
-      </div>
-
-      <div class="expand-toggle" onclick="toggleCard('${g.id}')">
-        <span>${isExpanded ? 'COLLAPSE ▲' : 'EXPAND ▼'}</span>
-      </div>
-    </div>`;
+  // Signal strength
+  var sg8=[], sg5=[], sg1=[];
+  allR.forEach(function(r) {
+    if(r.isLegacy||r.spreadCorrect===null&&r.totalCorrect===null) return;
+    var s = r.signalScore||0;
+    var v = r.spreadCorrect!==null?r.spreadCorrect:r.totalCorrect;
+    if(s>=8) sg8.push(v); else if(s>=5) sg5.push(v); else if(s>0) sg1.push(v);
+  });
+  if(sg8.length||sg5.length||sg1.length) {
+    html += '<div class="a-section-title" style="margin-top:16px">By Signal Strength</div>';
+    html += '<div class="a-table">'+aRow('Strong (8-10)',sg8)+aRow('Moderate (5-7)',sg5)+aRow('Weak (1-4)',sg1)+'</div>';
   }
 
-  // ─── ACTIONS ─────────────────────────────────────────────
-  function processData() {
-    const raw = document.getElementById('pasteInput').value.trim();
-    if (!raw) { showToast('PASTE DATA FIRST'); return; }
-
-    const games = parseVSiN(raw);
-    if (!games.length) { showToast('PARSE FAILED — CHECK FORMAT'); return; }
-
-    const movements = detectMovements(games);
-
-    // Save snapshot
-    const snap = {
-      id: Date.now(),
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      timestamp: Date.now(),
-      games,
-      gameCount: games.length,
-      book: activeBook
-    };
-
-    // Auto-set baseline if this is the first snapshot of this book today
-    const existingBaseline = getBaseline();
-    const existingBaselineBook = existingBaseline && existingBaseline.games.length > 0 ? (existingBaseline.games[0].book || 'Circa') : null;
-    const sameBookSnapsExisting = snapshots.filter(s => {
-      const b = s.games && s.games.length > 0 ? (s.games[0].book || 'Circa') : 'Circa';
-      return b === activeBook;
-    });
-
-    if (sameBookSnapsExisting.length === 0 && existingBaselineBook !== activeBook) {
-      setBaseline(snap);
-      showToast('📌 ' + activeBook.toUpperCase() + ' BASELINE SET — ' + snap.time);
-    }
-
-    snapshots.push(snap);
-    if (snapshots.length > 20) snapshots.shift(); // keep last 20
-    localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
-
-    currentGames = games;
-
-    // Log movements persistently — only for same-book comparisons
-    if (Object.keys(movements).length > 0) {
-      const existingLog = getMovementLog();
-      for (const [gameId, moves] of Object.entries(movements)) {
-        if (!existingLog[gameId]) existingLog[gameId] = [];
-        moves.forEach(m => {
-          existingLog[gameId].push({
-            ...m,
-            time: snap.time,
-            timestamp: snap.timestamp,
-            book: activeBook
-          });
-        });
-      }
-      localStorage.setItem('sharpmon_movelog', JSON.stringify(existingLog));
-    }
-
-    // Update UI
-    document.getElementById('snapCount').textContent = snapshots.length;
-    document.getElementById('lastUpdate').textContent = snap.time;
-    renderBoard(games, movements);
-    renderHistory();
-    showToast(`✓ ${games.length} GAMES PARSED`);
-    document.getElementById('pasteInput').value = '';
+  // Est total
+  var estOut = outcomes.filter(function(o){return o.estTotal&&o.estGap!==null;});
+  if(estOut.length) {
+    html += '<div class="a-section-title" style="margin-top:16px">VSiN Estimated Total</div>';
+    html += '<div class="a-subtitle">'+estOut.length+' games with est total logged</div>';
+    var overLean = estOut.filter(function(o){return o.estGap>=1.5;});
+    var underLean = estOut.filter(function(o){return o.estGap<=-1.5;});
+    var overAcc = overLean.map(function(o){return (o.awayScore+o.homeScore)>o.marketTotalAtBet;});
+    var underAcc = underLean.map(function(o){return (o.awayScore+o.homeScore)<o.marketTotalAtBet;});
+    html += '<div class="a-table">'+aRow('EST > Market (Lean OVER)',overAcc,overLean.length+' games, est 1.5+ above line')+aRow('EST < Market (Lean UNDER)',underAcc,underLean.length+' games, est 1.5+ below line')+'</div>';
   }
 
-  function toggleCard(id) {
-    if (expandedCards.has(id)) {
-      expandedCards.delete(id);
+  // By book
+  html += '<div class="a-section-title" style="margin-top:16px">By Book</div>';
+  ['Circa','DraftKings'].forEach(function(bk) {
+    var bkOut = outcomes.filter(function(o){return (o.book||'Circa')===bk;});
+    var bkR = allR.filter(function(r){return (r.book||'Circa')===bk&&!r.isLegacy;});
+    var bkColor = bk==='DraftKings'?'var(--blue)':'var(--green)';
+    var borderColor = bk==='DraftKings'?'rgba(0,176,255,.3)':'rgba(0,255,135,.3)';
+    var bkS = bkOut.filter(function(o){return o.spreadCorrect!==null;}).map(function(o){return o.spreadCorrect;});
+    var bkT = bkOut.filter(function(o){return o.totalCorrect!==null;}).map(function(o){return o.totalCorrect;});
+    html += '<div class="book-section" style="border:1px solid '+borderColor+'">';
+    html += '<div class="book-header"><span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:'+bkColor+'">'+bk.toUpperCase()+'</span>';
+    if(bkOut.length) {
+      html += '<div class="book-stats"><div class="book-stat"><div class="book-stat-num" style="color:'+aColor(bkS)+'">'+pct(bkS)+'</div><div class="book-stat-label">SPREAD · '+bkS.length+'g</div></div><div class="book-stat"><div class="book-stat-num" style="color:'+aColor(bkT)+'">'+pct(bkT)+'</div><div class="book-stat-label">TOTAL · '+bkT.length+'g</div></div></div>';
     } else {
-      expandedCards.add(id);
+      html += '<span style="font-size:11px;color:var(--muted)">No data yet</span>';
     }
-    const movements = currentGames.length && snapshots.length > 1
-      ? detectMovements(currentGames)
-      : {};
-    renderBoard(currentGames, movements);
-  }
+    html += '</div></div>';
+  });
 
-  function setFilter(f, el) {
-    activeFilter = f;
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    const movements = currentGames.length && snapshots.length > 1
-      ? detectMovements(currentGames)
-      : {};
-    renderBoard(currentGames, movements);
-  }
+  // Recent results
+  html += '<div class="a-section-title" style="margin-top:16px">Recent Results</div>';
+  html += '<div class="a-table">';
+  outcomes.slice().reverse().slice(0,20).forEach(function(o) {
+    var aS = o.awayTeam.split(' ').pop(), hS = o.homeTeam.split(' ').pop();
+    var sc = o.spreadCorrect, tc = o.totalCorrect;
+    html += '<div class="a-row" style="grid-template-columns:1fr auto"><div><div class="a-row-label">'+aS+' @ '+hS+'</div><div class="a-row-sub">'+o.date+' · '+o.sport+' · '+o.awayScore+'-'+o.homeScore+' · '+(o.snapshotReadings?o.snapshotReadings.length:0)+' snaps</div>'+(o.isLegacy?'<div style="font-size:9px;color:var(--yellow)">⚠ Legacy</div>':'')+'</div>';
+    html += '<div style="display:flex;gap:4px;align-items:center">';
+    if(sc!==null) html += '<span class="badge" style="background:'+(sc?'rgba(0,255,135,.1)':'rgba(255,61,90,.1)')+';color:'+(sc?'var(--green)':'var(--red)')+';border:none">'+(sc?'SPRD ✓':'SPRD ✗')+'</span>';
+    if(tc!==null) html += '<span class="badge" style="background:'+(tc?'rgba(0,255,135,.1)':'rgba(255,61,90,.1)')+';color:'+(tc?'var(--green)':'var(--red)')+';border:none">'+(tc?'TOTL ✓':'TOTL ✗')+'</span>';
+    html += '</div></div>';
+  });
+  html += '</div>';
 
-  function submitEstTotal(gameId) {
-    const input = document.getElementById('est-total-' + gameId);
-    if (!input || !input.value) { showToast('ENTER ESTIMATED TOTAL'); return; }
-    saveEstTotal(gameId, input.value);
-    const movements = currentGames.length && snapshots.length > 1 ? detectMovements(currentGames) : {};
-    renderBoard(currentGames, movements);
-    showToast('📊 EST TOTAL LOCKED');
-  }
+  el.innerHTML = html;
+}
 
-  function unlockEstTotal(gameId) {
-    saveEstTotal(gameId, null);
-    const movements = currentGames.length && snapshots.length > 1 ? detectMovements(currentGames) : {};
-    renderBoard(currentGames, movements);
-  }
+// ─── TOAST ───────────────────────────────────────────────
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');}, 2500);
+}
 
-  function submitOutcome(gameId) {
-    const game = currentGames.find(g => g.id === gameId);
-    if (!game) return;
-    const awayScore = parseInt(document.getElementById('score-away-' + gameId).value);
-    const homeScore = parseInt(document.getElementById('score-home-' + gameId).value);
-    if (isNaN(awayScore) || isNaN(homeScore)) { showToast('ENTER BOTH SCORES'); return; }
-
-    // Pull handle data from EVERY snapshot that contains this game
-    const snapshotReadings = [];
-    snapshots.forEach(snap => {
-      const g = snap.games.find(g => g.id === gameId);
-      if (!g) return;
-
-      const snapTimeMT = new Date(snap.timestamp - 7*3600000);
-      const hourMT = snapTimeMT.getUTCHours();
-      const minuteMT = snapTimeMT.getUTCMinutes();
-
-      // Determine sharp side at this snapshot
-      const awayDominant = g.awayHandle > g.homeHandle;
-      const sharpHandle = awayDominant ? g.awayHandle : g.homeHandle;
-      const sharpBets = awayDominant ? g.awayBets : g.homeBets;
-      const sharpDelta = sharpHandle - sharpBets;
-      const sharpTeam = awayDominant ? g.awayTeam : g.homeTeam;
-
-      // Did the sharp spread side win?
-      let spreadCorrect = null;
-      if (sharpDelta >= 15 && sharpHandle >= 55) {
-        const sharpIsAway = sharpTeam === g.awayTeam;
-        if (sharpIsAway) {
-          spreadCorrect = (awayScore + g.awaySpread) > homeScore;
-        } else {
-          spreadCorrect = (homeScore + Math.abs(g.awaySpread)) > awayScore;
-        }
-      }
-
-      // Did the sharp total side win?
-      let totalCorrect = null;
-      const overDelta = g.overHandle - g.overBets;
-      const underDelta = g.underHandle - g.underBets;
-      const combined = awayScore + homeScore;
-      if (g.overHandle >= 60 && overDelta >= 15) {
-        totalCorrect = combined > g.total;
-      } else if (g.underHandle >= 60 && underDelta >= 15) {
-        totalCorrect = combined < g.total;
-      }
-
-      const estTotalsNow = getEstTotals();
-      const estTotalEntry = estTotalsNow[gameId];
-
-      snapshotReadings.push({
-        time: snap.time,
-        timestamp: snap.timestamp,
-        hourMT,
-        minuteMT,
-        awayHandle: g.awayHandle,
-        homeHandle: g.homeHandle,
-        awayBets: g.awayBets,
-        homeBets: g.homeBets,
-        overHandle: g.overHandle,
-        underHandle: g.underHandle,
-        overBets: g.overBets,
-        underBets: g.underBets,
-        sharpSpreadTeam: sharpDelta >= 15 && sharpHandle >= 55 ? sharpTeam : null,
-        sharpSpreadDelta: sharpDelta,
-        spreadCorrect,
-        totalCorrect,
-        signalScore: calcSignalScore(g, [], []),
-        estTotal: estTotalEntry ? estTotalEntry.value : null,
-        marketTotal: g.total,
-        estGap: estTotalEntry ? estTotalEntry.value - g.total : null
-      });
-    });
-
-    const fullLog = getMovementLog();
-    const gameLog = fullLog[gameId] || [];
-    const finalScore = calcSignalScore(game, [], gameLog);
-
-    logOutcome(gameId, game.awayTeam, game.homeTeam, game.sport,
-      awayScore, homeScore, {
-        spreadSide: game.spreadSide,
-        totalSide: game.totalSide,
-        spreadSignal: game.spreadSignal,
-        totalSignal: game.totalSignal,
-        awaySpread: game.awaySpread,
-        total: game.total,
-        awayTeam: game.awayTeam,
-        homeTeam: game.homeTeam,
-        sharpSpreadDelta: game.sharpSpreadDelta,
-        totalDelta: game.totalDelta,
-        signalScore: finalScore,
-        book: game.book || activeBook,
-        snapshotReadings,
-        estTotal: getEstTotals()[gameId] ? getEstTotals()[gameId].value : null,
-        marketTotalAtBet: game.total,
-        estGap: getEstTotals()[gameId] ? getEstTotals()[gameId].value - game.total : null
-      });
-  }
-
-  function showTab(tab) {
-    document.getElementById('tab-board').style.display = tab === 'board' ? 'block' : 'none';
-    document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
-    document.getElementById('tab-analytics').style.display = tab === 'analytics' ? 'block' : 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    if (tab === 'history') renderHistory();
-    if (tab === 'analytics') renderAnalytics();
-  }
-
-  function renderHistory() {
-    const list = document.getElementById('historyList');
-    if (!snapshots.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><div class="empty-title">No Snapshots</div><div class="empty-desc">Each paste saves a snapshot for movement tracking.</div></div>`;
-      return;
-    }
-    list.innerHTML = [...snapshots].reverse().map(snap => `
-      <div class="snapshot-card">
-        <div class="snapshot-header">
-          <div>
-            <div class="snapshot-time">${snap.time}</div>
-            <div class="snapshot-games">${snap.gameCount} GAMES · ${new Date(snap.timestamp).toLocaleDateString()} · <span style="color:${snap.book === 'DraftKings' ? 'var(--blue)' : 'var(--green)'}">${snap.book || 'Circa'}</span></div>
-          </div>
-          <button class="delete-btn" onclick="deleteSnapshot(${snap.id})">DELETE</button>
-        </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${snap.games.filter(g => g.overallSignal !== 'neutral').map(g =>
-            `<span class="signal-badge ${g.overallSignal === 'whale' ? 'badge-whale' : 'badge-trap'}" style="font-size:9px">
-              ${g.awayTeam.split(' ').pop()} @ ${g.homeTeam.split(' ').pop()}
-            </span>`
-          ).join('')}
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function deleteSnapshot(id) {
-    snapshots = snapshots.filter(s => s.id !== id);
-    localStorage.setItem('sharpmon_snaps', JSON.stringify(snapshots));
-    document.getElementById('snapCount').textContent = snapshots.length;
-    renderHistory();
-    showToast('SNAPSHOT DELETED');
-  }
-
-  function clearAllSnapshots() {
-    if (!confirm('Clear all snapshots?')) return;
-    snapshots = [];
-    localStorage.removeItem('sharpmon_snaps');
-    document.getElementById('snapCount').textContent = 0;
-    renderHistory();
-    showToast('ALL SNAPSHOTS CLEARED');
-  }
-
-  function clearInput() {
-    document.getElementById('pasteInput').value = '';
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-  }
-
-  // ─── INIT ────────────────────────────────────────────────
-  document.getElementById('snapCount').textContent = snapshots.length;
-  updateBaselineUI();
-  if (snapshots.length) {
-    const last = snapshots[snapshots.length - 1];
-    currentGames = last.games;
-    document.getElementById('lastUpdate').textContent = last.time;
-    const movements = detectMovements(currentGames);
-    renderBoard(currentGames, movements);
-  }
+// ─── INIT ────────────────────────────────────────────────
+document.getElementById('snapCount').textContent = snaps.length;
+updateBaselineUI();
+if (snaps.length) {
+  var last = snaps[snaps.length-1];
+  currentGames = last.games || [];
+  document.getElementById('lastUpdate').textContent = last.time;
+  var movs = currentGames.length ? detectMovements(currentGames) : {};
+  renderBoard(currentGames, movs);
+}
 </script>
 </body>
 </html>
