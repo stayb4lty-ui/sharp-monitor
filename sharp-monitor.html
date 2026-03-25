@@ -1140,6 +1140,34 @@ function toast(msg) {
   setTimeout(function(){t.classList.remove('show');}, 2500);
 }
 
+// ─── GITHUB DATA SYNC ────────────────────────────────────
+var GITHUB_SNAPS_URL = 'https://raw.githubusercontent.com/stayb4lty-ui/sharp-monitor/main/data/snapshots.json';
+var lastGHTimestamp = 0;
+
+function fetchFromGitHub() {
+  fetch(GITHUB_SNAPS_URL + '?t=' + Date.now())
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data || !data.snaps || !data.snaps.length) return;
+      var latest = data.snaps[0];
+      if (!latest || !latest.ts) return;
+      // Only process if newer than what we have
+      if (latest.ts <= lastGHTimestamp) return;
+      lastGHTimestamp = latest.ts;
+      console.log('SharpMonitor: loaded from GitHub', latest.time, 'games:', (latest.results||[]).reduce(function(s,r){return s+(r.count||0);},0));
+      processAutoSync(latest);
+    })
+    .catch(function(e) {
+      console.log('SharpMonitor GitHub fetch error:', e.message);
+    });
+}
+
+// Fetch on load and every 2 minutes
+window.addEventListener('load', function() {
+  setTimeout(fetchFromGitHub, 2000);
+  setInterval(fetchFromGitHub, 2 * 60 * 1000);
+});
+
 // ─── AUTO-SYNC RECEIVER ──────────────────────────────────
 function processAutoSync(payload) {
   if (!payload || !payload.results || !payload.results.length) return;
