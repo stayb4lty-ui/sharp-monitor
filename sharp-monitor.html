@@ -589,6 +589,29 @@ function renderCard(g, moves) {
   var isExp = expandedCards[g.id];
   var movLog = getMovLog(g.book||'Circa');
   var bookLog = (movLog[g.id]||[]).filter(function(m){return !m.book||m.book===(g.book||'Circa');});
+
+  // Compute derived signal fields if missing (e.g. from auto-sync)
+  if (!g.spreadSig) {
+    var awayDom = (g.awayHandle||0) > (g.homeHandle||0);
+    var sharpH = awayDom ? (g.awayHandle||0) : (g.homeHandle||0);
+    var sharpB = awayDom ? (g.awayBets||0) : (g.homeBets||0);
+    var sharpDelta = sharpH - sharpB;
+    g.sharpTeam = awayDom ? g.awayTeam : g.homeTeam;
+    g.spreadDelta = sharpDelta;
+    var pubB = awayDom ? (g.homeBets||0) : (g.awayBets||0);
+    var pubH = awayDom ? (g.homeHandle||0) : (g.awayHandle||0);
+    if (sharpH >= 55 && sharpDelta >= 15) { g.spreadSig = 'whale'; g.spreadSide = g.sharpTeam; }
+    else if (pubB >= 65 && pubH < pubB-15) { g.spreadSig = 'trap'; g.spreadSide = awayDom ? g.homeTeam : g.awayTeam; }
+    else { g.spreadSig = 'neutral'; }
+    var od = (g.overHandle||0) - (g.overBets||0);
+    var ud = (g.underHandle||0) - (g.underBets||0);
+    if ((g.overHandle||0) >= 60 && od >= 15) { g.totalSig = 'whale'; g.totalSide = 'OVER'; }
+    else if ((g.underHandle||0) >= 60 && ud >= 15) { g.totalSig = 'whale'; g.totalSide = 'UNDER'; }
+    else { g.totalSig = 'neutral'; }
+    g.overallSig = g.spreadSig !== 'neutral' ? g.spreadSig : g.totalSig;
+  }
+  if (!g.sharpTeam) g.sharpTeam = g.awayTeam || 'Unknown';
+
   var score = (g.spreadSig!=='neutral'||g.totalSig!=='neutral') ? signalScore(g, movLog) : 0;
 
   var mtH = mtHour(Date.now());
