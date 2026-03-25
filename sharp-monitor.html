@@ -233,6 +233,7 @@ textarea::placeholder{color:var(--muted)}
 var snaps = []; // populated after migration
 var gamesByBook = { 'Circa': [], 'DraftKings': [] };
 var currentGames = [];
+var _gr = {}; // global game registry - maps id to game object
 var activeFilter = 'all';
 var expandedCards = {};
 var activeBook = 'Circa';
@@ -517,6 +518,9 @@ function renderBoard(games, movements) {
     return;
   }
 
+  // Register games in global registry
+  games.forEach(function(g) { _gr[g.id] = g; });
+
   // Attach movement info to games
   games.forEach(function(g) {
     var ms = movements[g.id] || [];
@@ -554,19 +558,28 @@ function renderBoard(games, movements) {
   });
 
   list.innerHTML = filtered.map(function(g){ return renderCard(g, movements[g.id]||[]); }).join('');
-  // Add event listeners via data attributes to avoid onclick escaping issues
-  list.querySelectorAll('[data-action]').forEach(function(el) {
-    el.addEventListener('click', function() {
-      var action = this.getAttribute('data-action');
-      var gid = this.getAttribute('data-gid');
-      if (action === 'log') doLog(gid);
-      else if (action === 'lockest') doLockEst(gid);
-      else if (action === 'locktip') doLockTip(gid);
-      else if (action === 'editest') { saveEstTotal(gid, null); rerenderCard(gid); }
-      else if (action === 'edittip') { saveTipTime(gid, null); rerenderCard(gid); }
-      else if (action === 'toggle') toggleCard(gid);
-    });
-  });
+
+  // Single delegated listener for all card interactions
+  list.onclick = function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    var gid = btn.getAttribute('data-gid');
+    e.stopPropagation();
+    if (action === 'log') doLog(gid);
+    else if (action === 'lockest') doLockEst(gid);
+    else if (action === 'locktip') doLockTip(gid);
+    else if (action === 'editest') { saveEstTotal(gid, null); rerenderCard(gid); }
+    else if (action === 'edittip') { saveTipTime(gid, null); rerenderCard(gid); }
+    else if (action === 'toggle') toggleCard(gid);
+  };
+
+  // Note save via delegated change
+  list.onchange = function(e) {
+    if (e.target.classList.contains('sm-note')) {
+      saveNote(e.target.getAttribute('data-gid'), e.target.value);
+    }
+  };
 }
 
 function renderCard(g, moves) {
@@ -700,7 +713,7 @@ function toggleCard(id) {
 
 // ─── LOCK HANDLERS ───────────────────────────────────────
 function doLockEst(id) {
-  var inp = document.getElementById('est-'+id);
+  var inp = document.getElementById('est-'+id) || document.querySelector('[id="est-'+id+'"]');
   if (!inp || !inp.value) { toast('ENTER EST TOTAL'); return; }
   saveEstTotal(id, inp.value);
   rerenderCard(id);
@@ -717,10 +730,13 @@ function doLockTip(id) {
 
 // ─── OUTCOME LOGGING ─────────────────────────────────────
 function doLog(id) {
-  var g = currentGames.filter(function(x){return x.id===id;})[0];
-  if (!g) return;
-  var aS = parseInt(document.getElementById('la-'+id).value);
-  var hS = parseInt(document.getElementById('lh-'+id).value);
+  var g = _gr[id] || currentGames.filter(function(x){return x.id===id;})[0];
+  if (!g) { toast('GAME NOT FOUND'); return; }
+  var awayInput = document.querySelector('.sm-away[data-gid="'+id+'"]');
+  var homeInput = document.querySelector('.sm-home[data-gid="'+id+'"]');
+  if (!awayInput || !homeInput) { toast('EXPAND CARD FIRST'); return; }
+  var aS = parseInt(awayInput.value);
+  var hS = parseInt(homeInput.value);
   if (isNaN(aS)||isNaN(hS)) { toast('ENTER BOTH SCORES'); return; }
 
   var tipTimes = getTipTimes();
