@@ -735,9 +735,13 @@ function doLockTip(id) {
 function doLog(id) {
   var g = _gr[id] || currentGames.filter(function(x){return x.id===id;})[0];
   if (!g) { toast('GAME NOT FOUND'); return; }
-  var awayInput = document.querySelector('.sm-away[data-gid="'+id+'"]');
-  var homeInput = document.querySelector('.sm-home[data-gid="'+id+'"]');
-  if (!awayInput || !homeInput) { toast('EXPAND CARD FIRST'); return; }
+  // Find score inputs by iterating - more reliable than querySelector with dynamic IDs
+  var awayInput = null, homeInput = null;
+  var aways = document.getElementsByClassName('sm-away');
+  var homes = document.getElementsByClassName('sm-home');
+  for (var i=0; i<aways.length; i++) { if (aways[i].getAttribute('data-gid')===id) { awayInput=aways[i]; break; } }
+  for (var i=0; i<homes.length; i++) { if (homes[i].getAttribute('data-gid')===id) { homeInput=homes[i]; break; } }
+  if (!awayInput || !homeInput) { toast('ENTER SCORES ABOVE'); return; }
   var aS = parseInt(awayInput.value);
   var hS = parseInt(homeInput.value);
   if (isNaN(aS)||isNaN(hS)) { toast('ENTER BOTH SCORES'); return; }
