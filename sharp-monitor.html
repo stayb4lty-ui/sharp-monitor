@@ -1125,7 +1125,9 @@ function processAutoSync(payload) {
   
   payload.results.forEach(function(result) {
     if (!result.games || !result.games.length) return;
-    var book = result.book === 'circa' ? 'Circa' : 'DraftKings';
+    // Normalize book name — handle both 'circa' and 'Circa' formats
+    var bookRaw = result.book || 'Circa';
+    var book = bookRaw.toLowerCase() === 'circa' ? 'Circa' : 'DraftKings';
     var games = result.games;
     
     // Tag each game with book
@@ -1168,9 +1170,18 @@ function processAutoSync(payload) {
   document.getElementById('snapCount').textContent = snaps.length;
   document.getElementById('lastUpdate').textContent = payload.time + ' ⚡';
   
-  // If currently viewing one of the synced books, refresh the board
-  if (payload.results.some(function(r){ return (r.book==='circa'?'Circa':'DraftKings')===boardBook; })) {
+  // Refresh the board — book comparison handles both 'circa' and 'Circa' formats
+  var syncedBooks = payload.results.map(function(r) {
+    var b = r.book || '';
+    return b.toLowerCase() === 'circa' ? 'Circa' : b.toLowerCase() === 'draftkings' ? 'DraftKings' : b;
+  });
+  if (syncedBooks.indexOf(boardBook) >= 0 || syncedBooks.length > 0) {
     currentGames = gamesByBook[boardBook] || [];
+    // If nothing for current board book, switch to first synced book
+    if (!currentGames.length && syncedBooks.length > 0) {
+      boardBook = syncedBooks[0];
+      currentGames = gamesByBook[boardBook] || [];
+    }
     var movs = currentGames.length ? detectMovements(currentGames) : {};
     updateBoardBookTabs();
     renderBoard(currentGames, movs);
