@@ -657,7 +657,7 @@ function renderCard(g, moves) {
   }
 
   // Log result
-  var logHTML = '<div class="card-section"><div class="section-title">🏀 LOG RESULT</div><div class="log-row"><input class="card-input" id="la-'+g.id+'" type="number" placeholder="'+awayN+' score"><input class="card-input" id="lh-'+g.id+'" type="number" placeholder="'+homeN+' score"><button class="lock-btn green-btn" onclick="doLog(&quot;'+g.id+'&quot;)">LOG</button></div></div>';
+  var logHTML = '<div class="card-section"><div class="section-title">🏀 LOG RESULT</div><div class="log-row"><div class="log-score-row"><input class="card-input sm-score-away" id="la-'+g.id+'" type="number" placeholder="'+awayN+' score"><input class="card-input sm-score-home" id="lh-'+g.id+'" type="number" placeholder="'+homeN+' score"></div><div class="log-btn-row"><button class="lock-btn green-btn sm-btn" data-action="log" data-gid="'+g.id+'">LOG RESULT</button></div></div></div>';
 
   // Spread delta display
   var sdColor = g.spreadSig==='whale'?'delta-pos':g.spreadSig==='trap'?'delta-neg':'delta-neu';
@@ -735,12 +735,9 @@ function doLockTip(id) {
 function doLog(id) {
   var g = _gr[id] || currentGames.filter(function(x){return x.id===id;})[0];
   if (!g) { toast('GAME NOT FOUND'); return; }
-  // Find score inputs by iterating - more reliable than querySelector with dynamic IDs
-  var awayInput = null, homeInput = null;
-  var aways = document.getElementsByClassName('sm-away');
-  var homes = document.getElementsByClassName('sm-home');
-  for (var i=0; i<aways.length; i++) { if (aways[i].getAttribute('data-gid')===id) { awayInput=aways[i]; break; } }
-  for (var i=0; i<homes.length; i++) { if (homes[i].getAttribute('data-gid')===id) { homeInput=homes[i]; break; } }
+  // Get score inputs by ID (most reliable approach)
+  var awayInput = document.getElementById('la-'+id);
+  var homeInput = document.getElementById('lh-'+id);
   if (!awayInput || !homeInput) { toast('ENTER SCORES ABOVE'); return; }
   var aS = parseInt(awayInput.value);
   var hS = parseInt(homeInput.value);
