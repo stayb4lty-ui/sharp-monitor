@@ -1186,7 +1186,32 @@ window.addEventListener('load', function() {
     processAutoSync(window._pendingAutoSync);
     window._pendingAutoSync = null;
   }
+
+  // Also poll chrome.storage for data pushed while tab was closed
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get('pendingSnapshot', function(data) {
+      if (data && data.pendingSnapshot) {
+        var snap = data.pendingSnapshot;
+        // Only process if it's recent (within last 35 minutes)
+        if (Date.now() - snap.ts < 35 * 60 * 1000) {
+          processAutoSync(snap);
+          toast('⚡ AUTO-SYNC LOADED: ' + snap.time);
+        }
+      }
+    });
+  }
 });
+
+// Listen for messages from extension
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+  try {
+    chrome.runtime.onMessage.addListener(function(msg) {
+      if (msg.action === 'autoSync' && msg.payload) {
+        processAutoSync(msg.payload);
+      }
+    });
+  } catch(e) {}
+}
 
 // ─── MIGRATION — copy old key format to new keys ────────
 (function() {
