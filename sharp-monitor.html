@@ -955,83 +955,97 @@ function renderAnalytics() {
     }
   });
 
-  // By time bucket
-  var buckets = {'Early AM (5-9AM)':{s:[],t:[]},'Mid Morning (9-12PM)':{s:[],t:[]},'Afternoon (12-4PM)':{s:[],t:[]},'Evening (4-8PM)':{s:[],t:[]},'Night (8PM+)':{s:[],t:[]}};
-  function getBucket(h) {
-    if(h>=5&&h<9) return 'Early AM (5-9AM)';
-    if(h>=9&&h<12) return 'Mid Morning (9-12PM)';
-    if(h>=12&&h<16) return 'Afternoon (12-4PM)';
-    if(h>=16&&h<20) return 'Evening (4-8PM)';
-    return 'Night (8PM+)';
-  }
-  allR.forEach(function(r) {
-    if(r.hourMT===null||r.isLegacy) return;
-    var b = getBucket(r.hourMT);
-    if(r.spreadCorrect!==null) buckets[b].s.push(r.spreadCorrect);
-    if(r.totalCorrect!==null) buckets[b].t.push(r.totalCorrect);
-  });
-
-  html += '<div class="a-section-title" style="margin-top:16px">Accuracy By Time (MT)</div>';
-  html += '<div class="a-subtitle">Each snapshot reading evaluated separately</div>';
-  html += '<div class="a-table">';
-  Object.keys(buckets).forEach(function(b) {
-    var d = buckets[b];
-    var all = d.s.concat(d.t);
-    if(!all.length) return;
-    html += '<div class="a-row"><div><div class="a-row-label">'+b+'</div>'+barHTML(all)+'</div>';
-    html += '<div style="text-align:center"><div class="a-games">SPRD</div><div class="a-pct" style="font-size:12px;color:'+aColor(d.s)+'">'+pct(d.s)+'</div></div>';
-    html += '<div style="text-align:center"><div class="a-games">TOTL</div><div class="a-pct" style="font-size:12px;color:'+aColor(d.t)+'">'+pct(d.t)+'</div></div></div>';
-  });
-  html += '</div>';
-
-  // Handle swing by time window (needs tip time)
+  // Signal accuracy by hours before tip (one reading per game per window)
   var withTip = outcomes.filter(function(o){ return (o.snapshotReadings||[]).some(function(r){return r.hrsBeforeTip!==null;}); });
-  if (withTip.length) {
-    html += '<div class="a-section-title" style="margin-top:16px">Signal Accuracy By Window</div>';
-    html += '<div class="a-subtitle">'+withTip.length+' games with tip time locked</div>';
-    var windows = [{label:'4+ hrs before',min:4,max:99},{label:'2-4 hrs before',min:2,max:4},{label:'1-2 hrs before',min:1,max:2},{label:'Final hour',min:0,max:1}];
+  var noTip = outcomes.filter(function(o){ return !(o.snapshotReadings||[]).some(function(r){return r.hrsBeforeTip!==null;}); });
+
+  html += '<div class="a-section-title" style="margin-top:16px">Signal Accuracy By Window</div>';
+
+  if (!withTip.length) {
+    html += '<div class="a-table"><div style="padding:14px;font-size:12px;color:var(--muted)">🔒 Lock tip times on game cards to enable this analysis. One data point per game per window — no double-counting.</div></div>';
+  } else {
+    html += '<div class="a-subtitle">'+withTip.length+' games with tip time · 1 reading per game per window</div>';
+    var windows = [
+      {label:'4+ hrs before tip', min:4, max:99},
+      {label:'2-4 hrs before tip', min:2, max:4},
+      {label:'1-2 hrs before tip', min:1, max:2},
+      {label:'Final hour',         min:0, max:1}
+    ];
     var sWin = {}, tWin = {};
-    windows.forEach(function(w){sWin[w.label]=[];tWin[w.label]=[];});
+    windows.forEach(function(w){ sWin[w.label]=[]; tWin[w.label]=[]; });
     var flipFollow = [], flipHold = [];
+
     withTip.forEach(function(o) {
-      var rs = o.snapshotReadings||[];
+      var rs = o.snapshotReadings || [];
       var lastR = rs[rs.length-1];
-      var lastSide = lastR&&lastR.awayHandle>lastR.homeHandle?'away':'home';
-      var lastOD = lastR&&lastR.overHandle>lastR.underHandle;
+      var lastSide = lastR && lastR.awayHandle > lastR.homeHandle ? 'away' : 'home';
+
       windows.forEach(function(w) {
-        var wr = rs.filter(function(r){return r.hrsBeforeTip!==null&&r.hrsBeforeTip>=w.min&&r.hrsBeforeTip<w.max;});
-        if(!wr.length) return;
-        var mid = wr[Math.floor(wr.length/2)];
-        if(o.spreadCorrect!==null) sWin[w.label].push(o.spreadCorrect);
-        if(o.totalCorrect!==null) tWin[w.label].push(o.totalCorrect);
+        // Get readings in this window
+        var wr = rs.filter(function(r){ return r.hrsBeforeTip !== null && r.hrsBeforeTip >= w.min && r.hrsBeforeTip < w.max; });
+        if (!wr.length) return;
+        // Use the middle reading to represent this window (reduces recency bias)
+        var rep = wr[Math.floor(wr.length / 2)];
+        // Evaluate the signal AT that reading against the outcome
+        var repSide = rep.awayHandle > rep.homeHandle ? 'away' : 'home';
+        var repOverDom = rep.overHandle > rep.underHandle;
+        var combined = o.awayScore + o.homeScore;
+
+        // Spread: was the sharp side at this snapshot correct?
+        var repDelta = Math.abs(rep.awayHandle - rep.awayBets);
+        var repH = Math.max(rep.awayHandle, rep.homeHandle);
+        if (repH >= 55 && repDelta >= 15) {
+          var sc = repSide === 'away'
+            ? (o.awayScore + o.awaySpread) > o.homeScore
+            : (o.homeScore + Math.abs(o.awaySpread)) > o.awayScore;
+          sWin[w.label].push(sc);
+        }
+
+        // Total: was the sharp side at this snapshot correct?
+        var od = rep.overHandle - rep.overBets;
+        var ud = rep.underHandle - rep.underBets;
+        if (rep.overHandle >= 60 && od >= 15) tWin[w.label].push(combined > o.total);
+        else if (rep.underHandle >= 60 && ud >= 15) tWin[w.label].push(combined < o.total);
       });
-      // Flip analysis: 4hr vs final
-      var r4 = rs.filter(function(r){return r.hrsBeforeTip!==null&&r.hrsBeforeTip>=4;})[0];
-      if(r4&&lastR&&o.spreadCorrect!==null) {
-        var s4 = r4.awayHandle>r4.homeHandle?'away':'home';
-        if(s4!==lastSide) { flipFollow.push(o.spreadCorrect); flipHold.push(!o.spreadCorrect); }
+
+      // Flip analysis: was the 4hr signal the same as the final hour signal?
+      var r4arr = rs.filter(function(r){ return r.hrsBeforeTip !== null && r.hrsBeforeTip >= 4; });
+      var r1arr = rs.filter(function(r){ return r.hrsBeforeTip !== null && r.hrsBeforeTip >= 0 && r.hrsBeforeTip < 1; });
+      if (r4arr.length && r1arr.length && o.spreadCorrect !== null) {
+        var r4 = r4arr[r4arr.length-1];
+        var r1 = r1arr[0];
+        var s4 = r4.awayHandle > r4.homeHandle ? 'away' : 'home';
+        var s1 = r1.awayHandle > r1.homeHandle ? 'away' : 'home';
+        if (s4 !== s1) {
+          // Signal flipped — was following the flip (final hour) correct?
+          flipFollow.push(o.spreadCorrect);
+          flipHold.push(!o.spreadCorrect);
+        }
       }
     });
+
     html += '<div class="a-table">';
     windows.forEach(function(w) {
       var sa = sWin[w.label], ta = tWin[w.label];
-      if(!sa.length&&!ta.length) return;
+      if (!sa.length && !ta.length) return;
       html += '<div class="a-row"><div><div class="a-row-label">'+w.label+'</div>'+barHTML(sa.concat(ta))+'</div>';
       html += '<div style="text-align:center"><div class="a-games">SPRD</div><div class="a-pct" style="font-size:12px;color:'+aColor(sa)+'">'+pct(sa)+'</div></div>';
       html += '<div style="text-align:center"><div class="a-games">TOTL</div><div class="a-pct" style="font-size:12px;color:'+aColor(ta)+'">'+pct(ta)+'</div></div></div>';
     });
     html += '</div>';
 
-    if(flipFollow.length) {
+    if (flipFollow.length) {
       html += '<div class="a-section-title" style="margin-top:16px">When Signal Flipped — Follow or Hold?</div>';
-      html += '<div class="a-subtitle">'+flipFollow.length+' games where 4hr+ signal reversed before tip</div>';
+      html += '<div class="a-subtitle">'+flipFollow.length+' games where 4hr signal reversed in final hour</div>';
       html += '<div class="a-table"><div style="padding:12px 14px"><div class="flip-grid">';
       html += '<div class="flip-box"><div class="flip-box-label">FOLLOW FLIP</div><div class="flip-box-val" style="color:'+aColor(flipFollow)+'">'+pct(flipFollow)+'</div></div>';
       html += '<div class="flip-box"><div class="flip-box-label">HOLD ORIGINAL</div><div class="flip-box-val" style="color:'+aColor(flipHold)+'">'+pct(flipHold)+'</div></div>';
       html += '</div></div></div>';
     }
-  } else {
-    html += '<div class="a-table" style="margin-top:8px"><div style="padding:14px;font-size:12px;color:var(--muted)">🔒 Lock tip times on game cards to enable signal window analysis.</div></div>';
+
+    if (noTip.length) {
+      html += '<div style="font-size:11px;color:var(--muted);padding:8px 2px">'+noTip.length+' game(s) excluded — no tip time locked</div>';
+    }
   }
 
   // Signal strength
@@ -1102,6 +1116,77 @@ function toast(msg) {
   t.classList.add('show');
   setTimeout(function(){t.classList.remove('show');}, 2500);
 }
+
+// ─── AUTO-SYNC RECEIVER ──────────────────────────────────
+function processAutoSync(payload) {
+  if (!payload || !payload.results || !payload.results.length) return;
+  
+  var totalGames = 0;
+  
+  payload.results.forEach(function(result) {
+    if (!result.games || !result.games.length) return;
+    var book = result.book === 'circa' ? 'Circa' : 'DraftKings';
+    var games = result.games;
+    
+    // Tag each game with book
+    games.forEach(function(g) { g.book = book; _gr[g.id] = g; });
+    
+    // Detect movements
+    var movements = detectMovements(games);
+    
+    // Log movements
+    if (Object.keys(movements).length) {
+      var log = getMovLog(book);
+      Object.keys(movements).forEach(function(id) {
+        if (!log[id]) log[id] = [];
+        movements[id].forEach(function(m) {
+          log[id].push(Object.assign({}, m, { time: payload.time, ts: payload.ts, book: book }));
+        });
+      });
+      setMovLog(book, log);
+    }
+    
+    // Auto-set baseline for this book if first snap
+    var sameBook = snaps.filter(function(s){ return (s.games&&s.games.length&&(s.games[0].book||'Circa'))===book; });
+    var bl = getBaseline();
+    var blBook = bl&&bl.games&&bl.games.length?(bl.games[0].book||'Circa'):null;
+    
+    var snap = { id: payload.ts + '_' + book, time: payload.time, ts: payload.ts, games: games, gameCount: games.length, book: book, autoSync: true };
+    
+    if (sameBook.length === 0 && blBook !== book) {
+      setBaseline(snap);
+    }
+    
+    snaps.push(snap);
+    if (snaps.length > 20) snaps.shift();
+    
+    gamesByBook[book] = games;
+    totalGames += games.length;
+  });
+  
+  setStore('sm_snaps', snaps);
+  document.getElementById('snapCount').textContent = snaps.length;
+  document.getElementById('lastUpdate').textContent = payload.time + ' ⚡';
+  
+  // If currently viewing one of the synced books, refresh the board
+  if (payload.results.some(function(r){ return (r.book==='circa'?'Circa':'DraftKings')===boardBook; })) {
+    currentGames = gamesByBook[boardBook] || [];
+    var movs = currentGames.length ? detectMovements(currentGames) : {};
+    updateBoardBookTabs();
+    renderBoard(currentGames, movs);
+  }
+  
+  updateBaselineUI();
+  toast('⚡ AUTO-SYNC: ' + totalGames + ' games · ' + payload.time);
+}
+
+// Check for pending auto-sync from extension on page load
+window.addEventListener('load', function() {
+  if (window._pendingAutoSync) {
+    processAutoSync(window._pendingAutoSync);
+    window._pendingAutoSync = null;
+  }
+});
 
 // ─── MIGRATION — copy old key format to new keys ────────
 (function() {
