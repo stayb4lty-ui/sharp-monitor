@@ -186,6 +186,10 @@ textarea::placeholder{color:var(--muted)}
     <div class="sum-cell"><div class="sum-num" id="sumTrap" style="color:var(--red)">0</div><div class="sum-desc">TRAPS</div></div>
     <div class="sum-cell"><div class="sum-num" id="sumMoved" style="color:var(--yellow)">0</div><div class="sum-desc">MOVED</div></div>
   </div>
+  <div style="padding:0 16px 8px;display:flex;gap:6px">
+    <button class="book-btn" id="board-circa" onclick="setBoardBook('Circa')" style="border:1px solid var(--green);background:var(--green);color:#000;flex:1;text-align:center;padding:7px">CIRCA</button>
+    <button class="book-btn" id="board-dk" onclick="setBoardBook('DraftKings')" style="border:1px solid var(--border2);background:none;color:var(--muted);flex:1;text-align:center;padding:7px">DRAFTKINGS</button>
+  </div>
   <div class="filter-bar">
     <button class="chip active" onclick="setFilter('all',this)">ALL</button>
     <button class="chip" onclick="setFilter('whale',this)">🐋 WHALES</button>
@@ -227,10 +231,12 @@ textarea::placeholder{color:var(--muted)}
 <script>
 // ─── STATE ───────────────────────────────────────────────
 var snaps = []; // populated after migration
+var gamesByBook = { 'Circa': [], 'DraftKings': [] };
 var currentGames = [];
 var activeFilter = 'all';
 var expandedCards = {};
 var activeBook = 'Circa';
+var boardBook = 'Circa'; // which book's board is currently displayed
 var SPORTS = ['NBA','NHL','MLB','NFL','NCAAM'];
 
 // ─── BOOK SELECTOR ───────────────────────────────────────
@@ -460,13 +466,43 @@ function processData() {
   if (snaps.length > 20) snaps.shift();
   setStore('sm_snaps', snaps);
 
+  gamesByBook[activeBook] = games;
   currentGames = games;
+  boardBook = activeBook;
   document.getElementById('snapCount').textContent = snaps.length;
   document.getElementById('lastUpdate').textContent = snap.time;
   document.getElementById('pasteInput').value = '';
 
+  updateBoardBookTabs();
   renderBoard(games, movements);
   toast('✓ '+games.length+' GAMES PARSED');
+}
+
+// ─── BOARD BOOK SWITCHER ─────────────────────────────────
+function setBoardBook(book) {
+  boardBook = book;
+  currentGames = gamesByBook[book] || [];
+  updateBoardBookTabs();
+  var movs = currentGames.length ? detectMovements(currentGames) : {};
+  renderBoard(currentGames, movs);
+}
+
+function updateBoardBookTabs() {
+  var circa = document.getElementById('board-circa');
+  var dk = document.getElementById('board-dk');
+  if (!circa || !dk) return;
+  var circaHas = gamesByBook['Circa'] && gamesByBook['Circa'].length;
+  var dkHas = gamesByBook['DraftKings'] && gamesByBook['DraftKings'].length;
+
+  circa.style.background = boardBook === 'Circa' ? 'var(--green)' : 'none';
+  circa.style.color = boardBook === 'Circa' ? '#000' : (circaHas ? 'var(--text)' : 'var(--muted)');
+  circa.style.borderColor = boardBook === 'Circa' ? 'var(--green)' : (circaHas ? '#444' : 'var(--border2)');
+  circa.textContent = 'CIRCA' + (circaHas ? ' ('+gamesByBook['Circa'].length+')' : '');
+
+  dk.style.background = boardBook === 'DraftKings' ? 'var(--blue)' : 'none';
+  dk.style.color = boardBook === 'DraftKings' ? '#000' : (dkHas ? 'var(--text)' : 'var(--muted)');
+  dk.style.borderColor = boardBook === 'DraftKings' ? 'var(--blue)' : (dkHas ? '#444' : 'var(--border2)');
+  dk.textContent = 'DRAFTKINGS' + (dkHas ? ' ('+gamesByBook['DraftKings'].length+')' : '');
 }
 
 // ─── RENDER BOARD ────────────────────────────────────────
@@ -518,6 +554,19 @@ function renderBoard(games, movements) {
   });
 
   list.innerHTML = filtered.map(function(g){ return renderCard(g, movements[g.id]||[]); }).join('');
+  // Add event listeners via data attributes to avoid onclick escaping issues
+  list.querySelectorAll('[data-action]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var action = this.getAttribute('data-action');
+      var gid = this.getAttribute('data-gid');
+      if (action === 'log') doLog(gid);
+      else if (action === 'lockest') doLockEst(gid);
+      else if (action === 'locktip') doLockTip(gid);
+      else if (action === 'editest') { saveEstTotal(gid, null); rerenderCard(gid); }
+      else if (action === 'edittip') { saveTipTime(gid, null); rerenderCard(gid); }
+      else if (action === 'toggle') toggleCard(gid);
+    });
+  });
 }
 
 function renderCard(g, moves) {
@@ -557,9 +606,9 @@ function renderCard(g, moves) {
   if (est) {
     var gap = est.value - g.total;
     var lean = gap >= 1.5 ? '<span style="color:var(--green)">↑ EST +'+(gap.toFixed(1))+' (LEAN OVER)</span>' : gap <= -1.5 ? '<span style="color:var(--red)">↓ EST '+(gap.toFixed(1))+' (LEAN UNDER)</span>' : '<span style="color:var(--muted)">= NEUTRAL</span>';
-    estHTML = '<div class="card-section"><div class="section-title"><span>📊 VSiN EST TOTAL</span><span style="font-size:9px;color:var(--green)">🔒 '+est.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--green)">'+est.value+'</span><span style="font-size:11px;color:var(--muted)">vs market <b style="color:var(--text)">'+g.total+'</b> '+lean+'</span><button class="edit-btn" onclick="saveEstTotal(\''+g.id+'\',null);rerenderCard(\''+g.id+'\')">EDIT</button></div></div>';
+    estHTML = '<div class="card-section"><div class="section-title"><span>📊 VSiN EST TOTAL</span><span style="font-size:9px;color:var(--green)">🔒 '+est.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--green)">'+est.value+'</span><span style="font-size:11px;color:var(--muted)">vs market <b style="color:var(--text)">'+g.total+'</b> '+lean+'</span><button class="edit-btn" onclick="saveEstTotal(&quot;'+g.id+'&quot;,null);rerenderCard(&quot;'+g.id+'&quot;)">EDIT</button></div></div>';
   } else {
-    estHTML = '<div class="card-section"><div class="section-title">📊 VSiN EST TOTAL</div><div class="input-row"><input class="card-input" id="est-'+g.id+'" type="number" step="0.5" placeholder="Enter estimated total..."><button class="lock-btn green-btn" onclick="doLockEst(\''+g.id+'\')">LOCK</button></div></div>';
+    estHTML = '<div class="card-section"><div class="section-title">📊 VSiN EST TOTAL</div><div class="input-row"><input class="card-input" id="est-'+g.id+'" type="number" step="0.5" placeholder="Enter estimated total..."><button class="lock-btn green-btn" onclick="doLockEst(&quot;'+g.id+'&quot;)">LOCK</button></div></div>';
   }
 
   // Tip time
@@ -567,15 +616,15 @@ function renderCard(g, moves) {
   var tip = tipTimes[g.id];
   var tipHTML = '';
   if (tip) {
-    tipHTML = '<div class="card-section"><div class="section-title"><span>⏰ TIP TIME (MT)</span><span style="font-size:9px;color:var(--blue)">🔒 '+tip.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--blue)">'+tip.display+'</span><button class="edit-btn" onclick="saveTipTime(\''+g.id+'\',null);rerenderCard(\''+g.id+'\')">EDIT</button></div></div>';
+    tipHTML = '<div class="card-section"><div class="section-title"><span>⏰ TIP TIME (MT)</span><span style="font-size:9px;color:var(--blue)">🔒 '+tip.t+'</span></div><div style="display:flex;align-items:center;gap:10px"><span class="locked-val" style="color:var(--blue)">'+tip.display+'</span><button class="edit-btn" onclick="saveTipTime(&quot;'+g.id+'&quot;,null);rerenderCard(&quot;'+g.id+'&quot;)">EDIT</button></div></div>';
   } else {
-    tipHTML = '<div class="card-section"><div class="section-title">⏰ TIP TIME (MT)</div><div class="input-row"><input class="card-input" id="tip-'+g.id+'" type="text" placeholder="e.g. 7:30 PM"><button class="lock-btn" onclick="doLockTip(\''+g.id+'\')">LOCK</button></div></div>';
+    tipHTML = '<div class="card-section"><div class="section-title">⏰ TIP TIME (MT)</div><div class="input-row"><input class="card-input" id="tip-'+g.id+'" type="text" placeholder="e.g. 7:30 PM"><button class="lock-btn" onclick="doLockTip(&quot;'+g.id+'&quot;)">LOCK</button></div></div>';
   }
 
   // Notes
   var notes = getNotes();
   var noteVal = notes[g.id] || '';
-  var notesHTML = '<div class="card-section"><div class="section-title">📝 NOTES</div><textarea class="notes-ta" rows="2" placeholder="Injury news, reason for bet/pass..." onchange="saveNote(\''+g.id+'\',this.value)">'+noteVal+'</textarea></div>';
+  var notesHTML = '<div class="card-section"><div class="section-title">📝 NOTES</div><textarea class="notes-ta" rows="2" placeholder="Injury news, reason for bet/pass..." onchange="saveNote(&quot;'+g.id+'&quot;,this.value)">'+noteVal+'</textarea></div>';
 
   // Movement log
   var movHTML = '';
@@ -592,7 +641,7 @@ function renderCard(g, moves) {
   }
 
   // Log result
-  var logHTML = '<div class="card-section"><div class="section-title">🏀 LOG RESULT</div><div class="log-row"><input class="card-input" id="la-'+g.id+'" type="number" placeholder="'+awayN+' score"><input class="card-input" id="lh-'+g.id+'" type="number" placeholder="'+homeN+' score"><button class="lock-btn green-btn" onclick="doLog(\''+g.id+'\')">LOG</button></div></div>';
+  var logHTML = '<div class="card-section"><div class="section-title">🏀 LOG RESULT</div><div class="log-row"><input class="card-input" id="la-'+g.id+'" type="number" placeholder="'+awayN+' score"><input class="card-input" id="lh-'+g.id+'" type="number" placeholder="'+homeN+' score"><button class="lock-btn green-btn" onclick="doLog(&quot;'+g.id+'&quot;)">LOG</button></div></div>';
 
   // Spread delta display
   var sdColor = g.spreadSig==='whale'?'delta-pos':g.spreadSig==='trap'?'delta-neg':'delta-neu';
@@ -623,7 +672,7 @@ function renderCard(g, moves) {
   ) : '';
 
   return '<div class="game-card '+cardClass+'" id="card-'+g.id+'">'
-    +'<div class="card-header" onclick="toggleCard(\''+g.id+'\')">'
+    +'<div class="card-header" onclick="toggleCard(&quot;'+g.id+'&quot;)">'
       +'<div>'
         +'<div style="font-size:13px;font-weight:500"><span style="font-family:JetBrains Mono,monospace;font-size:9px;color:'+bookColor+';margin-right:4px">'+( g.book||'Circa')+'</span><span style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--muted);margin-right:4px">'+g.sport+'</span>'+awayN+' <span style="color:var(--muted);font-size:10px">@</span> '+homeN+'</div>'
         +'<div class="matchup-line">'+spreadBadge+totalBadge+movBadge+scoreBadge+sTag+tTag+'</div>'
@@ -631,7 +680,7 @@ function renderCard(g, moves) {
       +'<span style="color:var(--muted);font-size:14px">'+(isExp?'▲':'▼')+'</span>'
     +'</div>'
     +(isExp?'<div class="card-body-shown">'+body+'</div>':'')
-    +'<div class="expand-toggle" onclick="toggleCard(\''+g.id+'\')"><span>'+(isExp?'COLLAPSE ▲':'EXPAND ▼')+'</span></div>'
+    +'<div class="expand-toggle" onclick="toggleCard(&quot;'+g.id+'&quot;)"><span>'+(isExp?'COLLAPSE ▲':'EXPAND ▼')+'</span></div>'
     +'</div>';
 }
 
@@ -1073,11 +1122,21 @@ function toast(msg) {
 snaps = JSON.parse(localStorage.getItem('sm_snaps') || '[]');
 document.getElementById('snapCount').textContent = snaps.length;
 updateBaselineUI();
+
+// Restore last games for each book from snapshots
 if (snaps.length) {
+  ['Circa', 'DraftKings'].forEach(function(bk) {
+    var bookSnaps = snaps.filter(function(s){ return (s.book||'Circa') === bk; });
+    if (bookSnaps.length) {
+      gamesByBook[bk] = bookSnaps[bookSnaps.length-1].games || [];
+    }
+  });
   var last = snaps[snaps.length-1];
-  currentGames = last.games || [];
+  boardBook = last.book || 'Circa';
+  currentGames = gamesByBook[boardBook];
   document.getElementById('lastUpdate').textContent = last.time;
   var movs = currentGames.length ? detectMovements(currentGames) : {};
+  updateBoardBookTabs();
   renderBoard(currentGames, movs);
 }
 </script>
