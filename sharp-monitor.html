@@ -1187,6 +1187,48 @@ window.addEventListener('load', function() {
     window._pendingAutoSync = null;
   }
 
+  // Check localStorage fallback written by extension injection
+  try {
+    var pending = localStorage.getItem('sm_autosync_pending');
+    if (pending) {
+      var snap = JSON.parse(pending);
+      if (snap && snap.ts && (Date.now() - snap.ts) < 2 * 3600 * 1000) {
+        processAutoSync(snap);
+        toast('⚡ AUTO-SYNC LOADED · ' + snap.time);
+      }
+      localStorage.removeItem('sm_autosync_pending');
+    }
+  } catch(e) {}
+
+  // Poll localStorage for new syncs every 3 seconds
+  setInterval(function() {
+    try {
+      var pending = localStorage.getItem('sm_autosync_pending');
+      if (pending) {
+        // Remove first to prevent double-processing
+        localStorage.removeItem('sm_autosync_pending');
+        var snap = JSON.parse(pending);
+        if (snap && snap.ts && (Date.now() - snap.ts) < 2 * 3600 * 1000) {
+          console.log('SharpMonitor: processing auto-sync', snap.time, 'games:', snap.results ? snap.results.reduce(function(s,r){return s+(r.count||0);},0) : 0);
+          processAutoSync(snap);
+          toast('⚡ AUTO-SYNC · ' + snap.time);
+        }
+      }
+    } catch(e) { console.log('SharpMonitor poll error:', e.message); }
+  }, 3000);
+
+  // Also check on load
+  try {
+    var initPending = localStorage.getItem('sm_autosync_pending');
+    if (initPending) {
+      localStorage.removeItem('sm_autosync_pending');
+      var initSnap = JSON.parse(initPending);
+      if (initSnap && initSnap.ts && (Date.now() - initSnap.ts) < 2 * 3600 * 1000) {
+        setTimeout(function() { processAutoSync(initSnap); toast('⚡ AUTO-SYNC · ' + initSnap.time); }, 1000);
+      }
+    }
+  } catch(e) {}
+
   // Also poll chrome.storage for data pushed while tab was closed
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get('pendingSnapshot', function(data) {
