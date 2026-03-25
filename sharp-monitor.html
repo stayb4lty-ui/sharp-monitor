@@ -1181,8 +1181,17 @@ function processAutoSync(payload) {
     var book = bookRaw.toLowerCase() === 'circa' ? 'Circa' : 'DraftKings';
     var games = result.games;
     
-    // Tag each game with book
-    games.forEach(function(g) { g.book = book; _gr[g.id] = g; });
+    // Tag each game with book and auto-save ESPN tip time if present
+    games.forEach(function(g) {
+      g.book = book;
+      _gr[g.id] = g;
+      if (g.tipTime) {
+        var tips = getTipTimes();
+        if (!tips[g.id]) { // Only auto-set if not already manually locked
+          saveTipTime(g.id, g.tipTime);
+        }
+      }
+    });
     
     // Detect movements
     var movements = detectMovements(games);
